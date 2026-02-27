@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
-import { transposeContent, NOTES, getNoteIndex, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
+import { transposeContent, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
 import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2 } from 'lucide-react';
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
@@ -18,20 +18,21 @@ export function SongViewer() {
     const { songs, deleteSong } = useSongs();
 
     const song = songs.find(s => s.id === id);
-    const [transpose, setTranspose] = useState(0);
+
+    // Store the currently displayed key directly (preserves flat/minor names like 'Bb', 'Em')
+    const [selectedKey, setSelectedKey] = useState(song?.key || 'C');
 
     const transposedContent = useMemo(() => {
         if (!song) return '';
-        return transposeContent(song.content, transpose, song.key);
-    }, [song, transpose]);
+        const semitones = getSemitonesDifference(song.key, selectedKey);
+        return transposeContent(song.content, semitones, song.key);
+    }, [song, selectedKey]);
 
     if (!song) {
         return <div className="p-8 text-center text-text-muted">Canción no encontrada</div>;
     }
 
-    const baseIndex = getNoteIndex(song.key);
-    const currentKeyIndex = baseIndex === -1 ? -1 : (baseIndex + transpose) % 12;
-    const currentKey = currentKeyIndex === -1 ? '?' : NOTES[currentKeyIndex < 0 ? currentKeyIndex + 12 : currentKeyIndex];
+    const isTransposed = selectedKey !== song.key;
 
     return (
         <div className="bg-background min-h-screen pb-24 font-sans text-text-main">
@@ -44,12 +45,8 @@ export function SongViewer() {
                     {/* Transpose Controls */}
                     <div className="flex items-center bg-surface rounded-lg overflow-hidden border border-white/10">
                         <select
-                            value={currentKey}
-                            onChange={(e) => {
-                                const newKey = e.target.value;
-                                const diff = getSemitonesDifference(song.key, newKey);
-                                setTranspose(diff);
-                            }}
+                            value={selectedKey}
+                            onChange={(e) => setSelectedKey(e.target.value)}
                             className="bg-transparent text-secondary font-bold text-lg py-1 px-3 appearance-none cursor-pointer focus:outline-none text-center min-w-[3rem]"
                         >
                             <optgroup label="Mayores">
@@ -166,16 +163,14 @@ export function SongViewer() {
             </div>
 
             {/* Floating Transpose Reset if modified */}
-            {
-                transpose !== 0 && (
-                    <button
-                        onClick={() => setTranspose(0)}
-                        className="fixed bottom-24 right-6 bg-accent text-white px-4 py-2 rounded-full shadow-lg text-xs font-bold animate-fade-in"
-                    >
-                        Restablecer Tono
-                    </button>
-                )
-            }
+            {isTransposed && (
+                <button
+                    onClick={() => setSelectedKey(song.key)}
+                    className="fixed bottom-24 right-6 bg-accent text-white px-4 py-2 rounded-full shadow-lg text-xs font-bold animate-fade-in"
+                >
+                    Restablecer Tono
+                </button>
+            )}
             {/* Live Session Overlays */}
             <LiveBanner />
             <DirectorControls />

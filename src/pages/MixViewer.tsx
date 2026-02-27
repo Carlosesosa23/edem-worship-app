@@ -2,17 +2,20 @@ import { useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMixes } from '../contexts/MixesContext';
 import { useSongs } from '../contexts/SongsContext';
-import { ArrowLeft, Calendar, Music, List, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Music, List, Trash2, Radio } from 'lucide-react';
 import { MixSongItem } from '../components/MixSongItem';
 import { Link } from 'react-router-dom';
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
+import { NowPlayingBar } from '../components/NowPlayingBar';
+import { useLiveSession } from '../contexts/LiveSessionContext';
 
 export function MixViewer() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { mixes, deleteMix } = useMixes();
     const { songs } = useSongs();
+    const { liveState } = useLiveSession();
 
     // Create Refs for quick scrolling
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -35,50 +38,61 @@ export function MixViewer() {
     return (
         <div className="bg-background min-h-screen text-text-main pb-32 font-sans" ref={scrollContainerRef}>
             {/* Header Sticky */}
-            <div className="sticky top-0 z-30 glass-panel border-b border-white/5 px-4 py-3 shadow-2xl backdrop-blur-xl">
-                <div className="flex items-center gap-4 mb-2">
-                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                        <ArrowLeft size={24} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-bold truncate">
-                            {mix.title}
-                        </h2>
-                        <div className="flex items-center gap-2 text-xs text-text-muted">
-                            <Calendar size={12} />
-                            <span>{new Date(mix.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={async () => {
-                            if (window.confirm('¿Estás seguro que deseas ELIMINAR este mix permanentemente?')) {
-                                try {
-                                    await deleteMix(mix.id);
-                                    navigate('/mixes');
-                                } catch (error) {
-                                    alert('Error al eliminar');
-                                }
-                            }
-                        }}
-                        className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
-                        title="Eliminar mix"
-                    >
-                        <Trash2 size={20} />
-                    </button>
-                </div>
+            <div className="sticky top-0 z-30 glass-panel border-b border-white/5 shadow-2xl backdrop-blur-xl">
+                {/* Now Playing bar — inside sticky so it stays on screen while scrolling */}
+                <NowPlayingBar />
 
-                {/* Quick Jump Bar */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 mask-fade-right">
-                    {mixSongs.map((song, idx) => song && (
-                        <button
-                            key={song.id}
-                            onClick={() => scrollToSong(song.id)}
-                            className="flex-shrink-0 bg-surface/50 border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap hover:bg-primary/20 hover:border-primary/30 transition-all active:scale-95"
-                        >
-                            <span className="text-secondary font-bold mr-1">{idx + 1}.</span>
-                            {song.title}
+                <div className="px-4 py-3">
+                    <div className="flex items-center gap-4 mb-2">
+                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                            <ArrowLeft size={24} />
                         </button>
-                    ))}
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-lg font-bold truncate">
+                                {mix.title}
+                            </h2>
+                            <div className="flex items-center gap-2 text-xs text-text-muted">
+                                <Calendar size={12} />
+                                <span>{new Date(mix.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('¿Estás seguro que deseas ELIMINAR este mix permanentemente?')) {
+                                    try {
+                                        await deleteMix(mix.id);
+                                        navigate('/mixes');
+                                    } catch (error) {
+                                        alert('Error al eliminar');
+                                    }
+                                }
+                            }}
+                            className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
+                            title="Eliminar mix"
+                        >
+                            <Trash2 size={20} />
+                        </button>
+                    </div>
+
+                    {/* Quick Jump Bar */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 mask-fade-right">
+                        {mixSongs.map((song, idx) => song && (
+                            <button
+                                key={song.id}
+                                onClick={() => scrollToSong(song.id)}
+                                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex items-center gap-1.5 ${liveState.activeSongId === song.id
+                                    ? 'bg-primary text-white border-2 border-white/40 shadow-lg shadow-primary/40 ring-2 ring-primary/50 animate-pulse'
+                                    : 'bg-surface/50 border border-white/10 hover:bg-primary/20 hover:border-primary/30'
+                                    }`}
+                            >
+                                {liveState.activeSongId === song.id && (
+                                    <Radio size={10} className="flex-shrink-0" />
+                                )}
+                                <span className={`font-bold mr-0.5 ${liveState.activeSongId === song.id ? 'text-white/80' : 'text-secondary'}`}>{idx + 1}.</span>
+                                {song.title}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

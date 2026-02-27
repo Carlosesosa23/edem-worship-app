@@ -6,27 +6,27 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function LiveBanner() {
-    const { liveState } = useLiveSession();
+    const { liveState, isDirector } = useLiveSession();
     const [isVisible, setIsVisible] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Auto-navigate to active song if we're not already there
+    // When director sets a song live, auto-navigate musicians to that song
     useEffect(() => {
-        if (liveState.activeSongId) {
-            const currentPath = location.pathname;
-            const targetPath = `/songs/${liveState.activeSongId}`;
+        if (!liveState.activeSongId) return;
 
-            // Only suggest or navigate if we are not editing
-            if (!currentPath.includes('/edit') && currentPath !== targetPath) {
-                // For now, we'll just show a "Go to Song" button in the banner or silently navigate
-                // Let's silently navigate for "Seamless" experience if user is on list or home
-                if (currentPath === '/' || currentPath === '/songs' || currentPath.startsWith('/songs/')) {
-                    // navigate(targetPath); // Uncomment to force navigation
-                }
-            }
-        }
-    }, [liveState.activeSongId, location.pathname, navigate]);
+        const targetPath = `/songs/${liveState.activeSongId}`;
+        const currentPath = location.pathname;
+
+        // Don't navigate if already on that song or in edit mode
+        if (currentPath === targetPath || currentPath.includes('/edit')) return;
+
+        // Directors stay where they are (mix control view)
+        if (isDirector) return;
+
+        // Navigate musicians immediately to the active song
+        navigate(targetPath);
+    }, [liveState.activeSongId]); // Only trigger when the active song changes
 
     useEffect(() => {
         if (liveState.currentSignal) {

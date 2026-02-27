@@ -2,11 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
 import { Save, ArrowLeft } from 'lucide-react';
+import { MAJOR_KEYS, MINOR_KEYS } from '../lib/transpose';
 
 export function SongEditor() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { addSong, songs } = useSongs();
+    const { addSong, updateSong, songs } = useSongs();
 
     const existingSong = id ? songs.find(s => s.id === id) : null;
 
@@ -22,17 +23,24 @@ export function SongEditor() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        const songData = {
+            title,
+            artist,
+            key,
+            bpm: Number(bpm) || undefined,
+            content,
+            bestSinger,
+            youtubeUrl: youtubeUrl || undefined,
+            addedBy: 'User'
+        };
         try {
-            await addSong({
-                title,
-                artist,
-                key,
-                bpm: Number(bpm) || undefined,
-                content,
-                bestSinger,
-                youtubeUrl: youtubeUrl || undefined,
-                addedBy: 'User' // TODO: Replace with auth user
-            });
+            if (id && existingSong) {
+                // Editing an existing song — update it
+                await updateSong(id, songData);
+            } else {
+                // Creating a new song
+                await addSong(songData);
+            }
             navigate('/songs');
         } catch (error) {
             console.error(error);
@@ -86,9 +94,16 @@ export function SongEditor() {
                                 value={key}
                                 onChange={e => setKey(e.target.value)}
                             >
-                                {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(k => (
-                                    <option key={k} value={k} className="bg-surface text-text-main">{k}</option>
-                                ))}
+                                <optgroup label="Mayores">
+                                    {MAJOR_KEYS.map(k => (
+                                        <option key={k} value={k} className="bg-surface text-text-main">{k}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="Menores">
+                                    {MINOR_KEYS.map(k => (
+                                        <option key={k} value={k} className="bg-surface text-text-main">{k}</option>
+                                    ))}
+                                </optgroup>
                             </select>
                         </div>
                     </div>

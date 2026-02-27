@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Song } from '../types/index';
-import { transposeContent, NOTES, getNoteIndex, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
+import { transposeContent, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
 import { Music, User, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLiveSession } from '../contexts/LiveSessionContext';
@@ -11,19 +11,18 @@ interface MixSongItemProps {
 }
 
 export function MixSongItem({ song, index }: MixSongItemProps) {
-    const [transpose, setTranspose] = useState(0);
     const { isDirector, setActiveSong, clearActiveSong, liveState } = useLiveSession();
 
     // Check if this is the active song in live session
     const isActive = liveState.activeSongId === song.id;
 
-    const transposedContent = useMemo(() => {
-        return transposeContent(song.content, transpose, song.key);
-    }, [song.content, transpose, song.key]);
+    // Store selected key as state directly to preserve flat/minor names (e.g. 'Bb' not 'A#')
+    const [selectedKey, setSelectedKey] = useState(song.key || 'C');
 
-    const baseIndex = getNoteIndex(song.key);
-    const currentKeyIndex = baseIndex === -1 ? -1 : (baseIndex + transpose) % 12;
-    const currentKey = currentKeyIndex === -1 ? '?' : NOTES[currentKeyIndex < 0 ? currentKeyIndex + 12 : currentKeyIndex];
+    const transposedContent = useMemo(() => {
+        const semitones = getSemitonesDifference(song.key, selectedKey);
+        return transposeContent(song.content, semitones, song.key);
+    }, [song.content, song.key, selectedKey]);
 
     return (
         <div
@@ -60,12 +59,8 @@ export function MixSongItem({ song, index }: MixSongItemProps) {
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center bg-surface rounded-lg overflow-hidden border border-white/10 shadow-sm relative">
                             <select
-                                value={currentKey}
-                                onChange={(e) => {
-                                    const newKey = e.target.value;
-                                    const diff = getSemitonesDifference(song.key, newKey);
-                                    setTranspose(diff);
-                                }}
+                                value={selectedKey}
+                                onChange={(e) => setSelectedKey(e.target.value)}
                                 className="bg-transparent text-secondary font-bold text-sm py-1 pl-3 pr-6 appearance-none cursor-pointer focus:outline-none min-w-[4rem]"
                             >
                                 <optgroup label="Mayores">
