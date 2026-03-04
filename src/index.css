@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #141211;
-  --color-surface: #26211f;
-  --color-surface-highlight: #3a322f;
-  --color-primary: #d4a373;
-  --color-primary-hover: #bc8d61;
-  --color-secondary: #e6ccb2;
-  --color-accent: #d88c8c;
-  --color-text-main: #fdfcfb;
-  --color-text-muted: #b8aba2;
+  --color-background: #0f111a;
+  --color-surface: #1e2136;
+  --color-surface-highlight: #2c304d;
+  --color-primary: #a855f7;
+  --color-primary-hover: #9333ea;
+  --color-secondary: #0ea5e9;
+  --color-accent: #f43f5e;
+  --color-text-main: #f8fafc;
+  --color-text-muted: #cbd5e1;
 
   --font-sans: "Inter", system-ui, sans-serif;
 
@@ -45,11 +45,11 @@
 
 body {
   background-color: var(--color-background);
-  /* Elegant warm nude gradient orbs in the background */
+  /* "Aurora" effect: joyful, elegant, and brighter gradients */
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(212, 163, 115, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(230, 204, 178, 0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(216, 140, 140, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 10% 0%, rgba(168, 85, 247, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(14, 165, 233, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.2) 0%, transparent 50%);
   background-attachment: fixed;
   color: var(--color-text-main);
   font-family: var(--font-sans);
@@ -60,20 +60,20 @@ body {
 /* Custom Utilities */
 @layer components {
   .glass-panel {
-    /* Slightly warmer border to match the elegant nude palette */
-    @apply bg-surface/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+    /* More translucent to let the bright gradients shine through elegantly */
+    @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl;
   }
 
   .btn-primary {
-    /* Using a subtle gradient on primary buttons for an elegant touch */
-    @apply bg-gradient-to-r from-primary to-[#c79461] hover:from-primary-hover hover:to-[#ae7e50] text-background font-extrabold tracking-wide py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95;
+    /* Vibrant gradient for the primary button */
+    @apply bg-gradient-to-r from-primary to-secondary hover:from-primary-hover hover:to-[#0284c7] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/30 active:scale-95;
   }
 
   .btn-secondary {
-    @apply bg-surface hover:bg-surface-highlight text-text-main font-semibold py-3 px-6 rounded-xl transition-all border border-white/5 active:scale-95 shadow-md;
+    @apply bg-white/5 hover:bg-white/10 text-text-main font-semibold py-3 px-6 rounded-xl transition-all border border-white/10 active:scale-95 shadow-md backdrop-blur-md;
   }
 
   .input-field {
-    @apply bg-surface/80 border border-white/10 rounded-xl px-4 py-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-full placeholder-text-muted shadow-inner;
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/60 transition-all w-full placeholder-text-muted/60 shadow-inner;
   }
 }
