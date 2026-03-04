@@ -1,24 +1,28 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMixes } from '../contexts/MixesContext';
 import { useSongs } from '../contexts/SongsContext';
-import { ArrowLeft, Calendar, Music, List, Trash2, Radio } from 'lucide-react';
+import { ArrowLeft, Calendar, Music, List, Trash2, Radio, Palette, X } from 'lucide-react';
 import { MixSongItem } from '../components/MixSongItem';
 import { Link } from 'react-router-dom';
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
 import { NowPlayingBar } from '../components/NowPlayingBar';
-import { useLiveSession } from '../contexts/LiveSessionContext';
+import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
+import { cn } from '../lib/utils';
 
 export function MixViewer() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { mixes, deleteMix } = useMixes();
     const { songs } = useSongs();
-    const { liveState } = useLiveSession();
+    const { liveState, isDirector, clearVoiceAssignments } = useLiveSession();
 
-    // Create Refs for quick scrolling
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Voice assignment mode — director only
+    const [voiceMode, setVoiceMode] = useState(false);
+    const [activeSinger, setActiveSinger] = useState<string | null>(null);
 
     const mix = mixes.find(m => m.id === id);
 
@@ -39,7 +43,6 @@ export function MixViewer() {
         <div className="bg-background min-h-screen text-text-main pb-32 font-sans" ref={scrollContainerRef}>
             {/* Header Sticky */}
             <div className="sticky top-0 z-30 glass-panel border-b border-white/5 shadow-2xl backdrop-blur-xl">
-                {/* Now Playing bar — inside sticky so it stays on screen while scrolling */}
                 <NowPlayingBar />
 
                 <div className="px-4 py-3">
@@ -48,30 +51,45 @@ export function MixViewer() {
                             <ArrowLeft size={24} />
                         </button>
                         <div className="flex-1 min-w-0">
-                            <h2 className="text-lg font-bold truncate">
-                                {mix.title}
-                            </h2>
+                            <h2 className="text-lg font-bold truncate">{mix.title}</h2>
                             <div className="flex items-center gap-2 text-xs text-text-muted">
                                 <Calendar size={12} />
                                 <span>{new Date(mix.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             </div>
                         </div>
-                        <button
-                            onClick={async () => {
-                                if (window.confirm('¿Estás seguro que deseas ELIMINAR este mix permanentemente?')) {
-                                    try {
-                                        await deleteMix(mix.id);
-                                        navigate('/mixes');
-                                    } catch (error) {
-                                        alert('Error al eliminar');
+                        <div className="flex items-center gap-1">
+                            {/* Voice assignment toggle — director only */}
+                            {isDirector && (
+                                <button
+                                    onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); }}
+                                    className={cn(
+                                        'p-2 rounded-lg transition-colors',
+                                        voiceMode
+                                            ? 'bg-primary text-white'
+                                            : 'text-text-muted hover:text-text-main hover:bg-white/10'
+                                    )}
+                                    title="Asignar voces por línea"
+                                >
+                                    <Palette size={20} />
+                                </button>
+                            )}
+                            <button
+                                onClick={async () => {
+                                    if (window.confirm('¿Estás seguro que deseas ELIMINAR este mix permanentemente?')) {
+                                        try {
+                                            await deleteMix(mix.id);
+                                            navigate('/mixes');
+                                        } catch {
+                                            alert('Error al eliminar');
+                                        }
                                     }
-                                }
-                            }}
-                            className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
-                            title="Eliminar mix"
-                        >
-                            <Trash2 size={20} />
-                        </button>
+                                }}
+                                className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
+                                title="Eliminar mix"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Quick Jump Bar */}
@@ -80,20 +98,58 @@ export function MixViewer() {
                             <button
                                 key={song.id}
                                 onClick={() => scrollToSong(song.id)}
-                                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex items-center gap-1.5 ${liveState.activeSongId === song.id
-                                    ? 'bg-primary text-white border-2 border-white/40 shadow-lg shadow-primary/40 ring-2 ring-primary/50 animate-pulse'
-                                    : 'bg-surface/50 border border-white/10 hover:bg-primary/20 hover:border-primary/30'
-                                    }`}
+                                className={cn(
+                                    'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex items-center gap-1.5',
+                                    liveState.activeSongId === song.id
+                                        ? 'bg-primary text-white border-2 border-white/40 shadow-lg shadow-primary/40 ring-2 ring-primary/50 animate-pulse'
+                                        : 'bg-surface/50 border border-white/10 hover:bg-primary/20 hover:border-primary/30'
+                                )}
                             >
                                 {liveState.activeSongId === song.id && (
                                     <Radio size={10} className="flex-shrink-0" />
                                 )}
-                                <span className={`font-bold mr-0.5 ${liveState.activeSongId === song.id ? 'text-white/80' : 'text-secondary'}`}>{idx + 1}.</span>
+                                <span className={cn('font-bold mr-0.5', liveState.activeSongId === song.id ? 'text-white/80' : 'text-secondary')}>
+                                    {idx + 1}.
+                                </span>
                                 {song.title}
                             </button>
                         ))}
                     </div>
                 </div>
+
+                {/* Voice Assignment Toolbar — director only, visible when voiceMode is on */}
+                {isDirector && voiceMode && (
+                    <div className="px-4 py-2 border-t border-white/5 flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-text-muted font-semibold uppercase tracking-widest mr-1">Asignar a:</span>
+                        {SINGER_COLORS.map(s => (
+                            <button
+                                key={s.key}
+                                onClick={() => setActiveSinger(prev => prev === s.key ? null : s.key)}
+                                className={cn(
+                                    'px-3 py-1 rounded-full text-xs font-bold text-white transition-all active:scale-95',
+                                    s.bg,
+                                    activeSinger === s.key
+                                        ? 'ring-2 ring-white scale-105 shadow-lg'
+                                        : 'opacity-70 hover:opacity-100'
+                                )}
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={clearVoiceAssignments}
+                            className="ml-auto flex items-center gap-1 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
+                            title="Limpiar todas las asignaciones"
+                        >
+                            <X size={14} /> Limpiar todo
+                        </button>
+                        <p className="w-full text-[10px] text-text-muted mt-0.5">
+                            {activeSinger
+                                ? 'Toca una línea para asignarla · Toca de nuevo para quitar'
+                                : 'Selecciona un cantante para empezar a asignar líneas'}
+                        </p>
+                    </div>
+                )}
             </div>
 
             <div className="p-4 max-w-2xl mx-auto space-y-12">
@@ -104,6 +160,8 @@ export function MixViewer() {
                             key={`${mix.id}-${song.id}-${index}`}
                             song={song}
                             index={index}
+                            voiceMode={voiceMode}
+                            activeSinger={activeSinger}
                         />
                     );
                 })}
@@ -127,9 +185,10 @@ export function MixViewer() {
                     </div>
                 )}
             </div>
+
             {/* Live Session Overlays */}
             <LiveBanner />
             <DirectorControls />
-        </div >
+        </div>
     );
 }

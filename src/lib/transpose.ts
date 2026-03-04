@@ -48,6 +48,9 @@ export function transposeNote(note: string, semitones: number, useFlats?: boolea
 }
 
 export function transposeContent(content: string, semitones: number, originalKey: string = 'C'): string {
+    // If no transposition needed, return content as-is to preserve original formatting
+    if (semitones === 0) return content;
+
     // Determine target key to decide on flats/sharps globally for the song
     const targetFlats = shouldUseFlats(originalKey, semitones);
 
@@ -108,6 +111,36 @@ function transposeLine(line: string, semitones: number, targetFlats: boolean): s
         const transposedRoot = transposeNote(root, semitones, targetFlats);
         return `[${transposedRoot}${suffix}]`;
     });
+}
+
+/**
+ * Normaliza el contenido de una canción al formato bracket notation.
+ * Convierte líneas de acordes sin corchetes (ej. "C  F  G  Am") a bracket notation ("[C]  [F]  [G]  [Am]").
+ * Las líneas que ya tienen corchetes o son texto puro no se modifican.
+ * Llamar esto ANTES de guardar en BD para garantizar formato uniforme.
+ */
+export function normalizeContent(content: string): string {
+    const chordPattern = /^[A-G][#b]?(m|min|maj|dim|aug|sus|add|[0-9])*(\/[A-G][#b]?)?$/;
+
+    return content.split('\n').map(line => {
+        // Línea vacía o ya tiene corchetes → sin cambios
+        if (!line.trim() || line.includes('[')) return line;
+
+        const tokens = line.split(/\s+/).filter(t => t.trim());
+        if (tokens.length === 0) return line;
+
+        const validChordCount = tokens.filter(t => chordPattern.test(t)).length;
+
+        // Si ≥ 50% de los tokens son acordes → es una línea de acordes, normalizar
+        if (validChordCount / tokens.length >= 0.5) {
+            // Preservar espacios entre acordes, solo envolver los acordes en corchetes
+            return line.replace(/(\S+)/g, (token) =>
+                chordPattern.test(token) ? `[${token}]` : token
+            );
+        }
+
+        return line;
+    }).join('\n');
 }
 
 export const ALL_KEYS = [

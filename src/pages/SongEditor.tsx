@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
 import { Save, ArrowLeft } from 'lucide-react';
-import { MAJOR_KEYS, MINOR_KEYS } from '../lib/transpose';
+import { MAJOR_KEYS, MINOR_KEYS, normalizeContent } from '../lib/transpose';
 
 export function SongEditor() {
     const { id } = useParams();
@@ -28,7 +28,7 @@ export function SongEditor() {
             artist,
             key,
             bpm: Number(bpm) || undefined,
-            content,
+            content: normalizeContent(content),
             bestSinger,
             youtubeUrl: youtubeUrl || undefined,
             addedBy: 'User'

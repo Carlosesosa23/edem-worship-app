@@ -3,26 +3,140 @@ import type { Song } from '../types/index';
 import { transposeContent, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
 import { Music, User, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useLiveSession } from '../contexts/LiveSessionContext';
+import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
 
 interface MixSongItemProps {
     song: Song;
     index: number;
+    voiceMode: boolean;
+    activeSinger: string | null;
 }
 
-export function MixSongItem({ song, index }: MixSongItemProps) {
-    const { isDirector, setActiveSong, clearActiveSong, liveState } = useLiveSession();
+export function MixSongItem({ song, index, voiceMode, activeSinger }: MixSongItemProps) {
+    const { isDirector, setActiveSong, clearActiveSong, liveState, assignSingerToLines } = useLiveSession();
 
-    // Check if this is the active song in live session
     const isActive = liveState.activeSongId === song.id;
+    const voiceAssignments = liveState.voiceAssignments ?? {};
 
-    // Store selected key as state directly to preserve flat/minor names (e.g. 'Bb' not 'A#')
     const [selectedKey, setSelectedKey] = useState(song.key || 'C');
 
     const transposedContent = useMemo(() => {
         const semitones = getSemitonesDifference(song.key, selectedKey);
+        if (semitones === 0) return song.content;
         return transposeContent(song.content, semitones, song.key);
     }, [song.content, song.key, selectedKey]);
+
+    // Key format for voice assignments in a mix: "songId:lineIdx"
+    const makeKey = (lineIdx: number) => `${song.id}:${lineIdx}`;
+
+    const handleLineClick = (lineIdx: number) => {
+        if (!isDirector || !voiceMode || activeSinger === null) return;
+        const key = makeKey(lineIdx);
+        const current = voiceAssignments[key];
+        const newSingerKey = current === activeSinger ? null : activeSinger;
+        assignSingerToLines([lineIdx], newSingerKey, song.id);
+    };
+
+    // Which singer colors are used in this song (for legend)
+    const usedSingers = SINGER_COLORS.filter(s =>
+        Object.entries(voiceAssignments).some(
+            ([k, v]) => k.startsWith(`${song.id}:`) && v === s.key
+        )
+    );
+
+    const renderLine = (line: string, lineIdx: number) => {
+        const key = makeKey(lineIdx);
+        const singerKey = voiceAssignments[key];
+        const singerCfg = singerKey ? SINGER_COLORS.find(s => s.key === singerKey) : null;
+
+        const highlightClass = singerCfg ? singerCfg.light : '';
+        const borderClass = singerCfg
+            ? `border-l-4 ${singerCfg.border}`
+            : 'border-l-4 border-transparent';
+        const interactiveClass = (isDirector && voiceMode && activeSinger !== null)
+            ? 'cursor-pointer hover:opacity-75 select-none'
+            : '';
+
+        const hasChords = line.includes('[');
+
+        if (hasChords) {
+            const parts = line.split(/(\[[^\]]*\])/g);
+            type Segment = { chord: string; text: string };
+            const segments: Segment[] = [];
+            let idx = 0;
+            while (idx < parts.length) {
+                const part = parts[idx];
+                if (part.startsWith('[') && part.endsWith(']')) {
+                    const chord = part.replace(/[\[\]]/g, '');
+                    const text = parts[idx + 1] ?? '';
+                    segments.push({ chord, text });
+                    idx += 2;
+                } else {
+                    if (part !== '') segments.push({ chord: '', text: part });
+                    idx += 1;
+                }
+            }
+
+            return (
+                <div
+                    key={lineIdx}
+                    onClick={() => handleLineClick(lineIdx)}
+                    className={cn(
+                        'flex flex-wrap items-end mb-2 px-2 py-0.5 rounded-r-lg transition-all',
+                        highlightClass,
+                        borderClass,
+                        interactiveClass
+                    )}
+                >
+                    {singerCfg && (
+                        <span className={cn(
+                            'self-center mr-2 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none flex-shrink-0',
+                            singerCfg.bg, 'text-white'
+                        )}>
+                            {singerCfg.label}
+                        </span>
+                    )}
+                    {segments.map((seg, j) => (
+                        <span key={j} className="inline-flex flex-col items-start mr-0.5">
+                            <span className={cn(
+                                'font-bold text-sm leading-none mb-1',
+                                singerCfg ? singerCfg.text : 'text-secondary',
+                                !seg.chord && 'invisible'
+                            )}>
+                                {seg.chord || '\u00A0'}
+                            </span>
+                            <span className="text-text-main text-base leading-none whitespace-pre">
+                                {seg.text || '\u00A0'}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+            );
+        }
+
+        return (
+            <div
+                key={lineIdx}
+                onClick={() => handleLineClick(lineIdx)}
+                className={cn(
+                    'mb-2 px-2 py-0.5 rounded-r-lg text-base leading-normal transition-all flex items-center gap-2',
+                    highlightClass,
+                    borderClass,
+                    interactiveClass
+                )}
+            >
+                {singerCfg && (
+                    <span className={cn(
+                        'flex-shrink-0 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none',
+                        singerCfg.bg, 'text-white'
+                    )}>
+                        {singerCfg.label}
+                    </span>
+                )}
+                <span>{line || '\u00A0'}</span>
+            </div>
+        );
+    };
 
     return (
         <div
@@ -35,9 +149,9 @@ export function MixSongItem({ song, index }: MixSongItemProps) {
             {/* Song Header */}
             <div className="flex flex-col gap-3 mb-6 sticky top-20 bg-background/95 backdrop-blur-md z-10 py-4 -mx-2 px-2 border-b border-white/5">
                 <div className="flex items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="w-6 h-6 rounded-full bg-surface-highlight text-xs font-bold flex items-center justify-center text-text-muted">
+                    <div className="flex-1 min-w-0 mr-3">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="w-6 h-6 rounded-full bg-surface-highlight text-xs font-bold flex items-center justify-center text-text-muted flex-shrink-0">
                                 {index + 1}
                             </span>
                             {isActive && (
@@ -45,8 +159,17 @@ export function MixSongItem({ song, index }: MixSongItemProps) {
                                     EN VIVO
                                 </span>
                             )}
+                            {/* Per-song singer legend */}
+                            {usedSingers.map(s => (
+                                <span key={s.key} className={cn(
+                                    'text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0',
+                                    s.bg
+                                )}>
+                                    {s.label}
+                                </span>
+                            ))}
                         </div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent">
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent truncate">
                             {song.title}
                         </h2>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted mt-1">
@@ -56,7 +179,7 @@ export function MixSongItem({ song, index }: MixSongItemProps) {
                     </div>
 
                     {/* Transpose Controls */}
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <div className="flex items-center bg-surface rounded-lg overflow-hidden border border-white/10 shadow-sm relative">
                             <select
                                 value={selectedKey}
@@ -98,34 +221,8 @@ export function MixSongItem({ song, index }: MixSongItemProps) {
             </div>
 
             {/* Content */}
-            <div translate="no" className="notranslate whitespace-pre-wrap font-mono text-base leading-loose text-text-main px-1">
-                {transposedContent.split('\n').map((line, i) => {
-                    const hasChords = line.includes('[');
-
-                    if (hasChords) {
-                        const parts = line.split(/(\[.*?\])/g);
-                        return (
-                            <div key={i} className="min-h-[2.2em] relative mb-2">
-                                {parts.map((part, j) => {
-                                    if (part.startsWith('[') && part.endsWith(']')) {
-                                        return (
-                                            <span key={j} className="text-secondary font-bold text-sm inline-block px-1 rounded -translate-y-3 transform select-none">
-                                                {part.replace(/[\[\]]/g, '')}
-                                            </span>
-                                        );
-                                    }
-                                    return <span key={j} className="text-text-main">{part}</span>;
-                                })}
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div key={i} className="min-h-[1.5em] mb-2 opacity-90">
-                            {line}
-                        </div>
-                    );
-                })}
+            <div translate="no" className="notranslate font-mono text-base text-text-main px-1">
+                {transposedContent.split('\n').map((line, lineIdx) => renderLine(line, lineIdx))}
             </div>
         </div>
     );

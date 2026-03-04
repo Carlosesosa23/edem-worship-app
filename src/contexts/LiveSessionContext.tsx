@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { db, isFirebaseEnabled } from '../lib/firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import type { VoiceAssignments, SingerColor } from '../types';
 
 interface LiveState {
     activeSongId: string | null;
     activeMixId: string | null;
     currentSignal: string | null;
     timestamp: number;
+    voiceAssignments: VoiceAssignments; // lineIdx → singerKey
 }
 
 interface LiveSessionContextType {
@@ -17,6 +19,8 @@ interface LiveSessionContextType {
     sendSignal: (signal: string) => Promise<void>;
     clearSignal: () => Promise<void>;
     clearActiveSong: () => Promise<void>;
+    assignSingerToLines: (lineIndexes: number[], singerKey: string | null, songId?: string) => Promise<void>;
+    clearVoiceAssignments: () => Promise<void>;
 }
 
 const LiveSessionContext = createContext<LiveSessionContextType | undefined>(undefined);
@@ -33,11 +37,21 @@ export const SIGNALS = [
     { label: "Nueva Canción Solicitada", color: "bg-pink-600" },
 ];
 
+export const SINGER_COLORS: SingerColor[] = [
+    { key: "purple", label: "Cantante 1", bg: "bg-purple-500",  text: "text-purple-300",  border: "border-purple-400",  light: "bg-purple-500/20" },
+    { key: "cyan",   label: "Cantante 2", bg: "bg-cyan-500",    text: "text-cyan-300",    border: "border-cyan-400",    light: "bg-cyan-500/20"   },
+    { key: "rose",   label: "Cantante 3", bg: "bg-rose-500",    text: "text-rose-300",    border: "border-rose-400",    light: "bg-rose-500/20"   },
+    { key: "amber",  label: "Cantante 4", bg: "bg-amber-500",   text: "text-amber-300",   border: "border-amber-400",   light: "bg-amber-500/20"  },
+    { key: "green",  label: "Cantante 5", bg: "bg-green-500",   text: "text-green-300",   border: "border-green-400",   light: "bg-green-500/20"  },
+    { key: "todos",  label: "Todos",      bg: "bg-white",       text: "text-white",       border: "border-white/60",    light: "bg-white/10"      },
+];
+
 const INITIAL_STATE: LiveState = {
     activeSongId: null,
     activeMixId: null,
     currentSignal: null,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    voiceAssignments: {},
 };
 
 export function LiveSessionProvider({ children }: { children: ReactNode }) {
@@ -49,26 +63,22 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     // Load state from source (Firebase or Local)
     useEffect(() => {
         if (isFirebaseEnabled && db) {
-            // Firebase Realtime Listener
-            const unsub = onSnapshot(doc(db, 'sessions', 'live'), (doc) => {
-                if (doc.exists()) {
-                    setLiveState(doc.data() as LiveState);
+            const unsub = onSnapshot(doc(db, 'sessions', 'live'), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data() as Partial<LiveState>;
+                    setLiveState({ ...INITIAL_STATE, ...data });
                 }
             });
             return () => unsub();
         } else {
-            // Local Storage Listener (Tab Sync)
             const handleStorageChange = (e: StorageEvent) => {
                 if (e.key === 'edem_live_session' && e.newValue) {
                     setLiveState(JSON.parse(e.newValue));
                 }
             };
             window.addEventListener('storage', handleStorageChange);
-
-            // Initial load
             const stored = localStorage.getItem('edem_live_session');
             if (stored) setLiveState(JSON.parse(stored));
-
             return () => window.removeEventListener('storage', handleStorageChange);
         }
     }, []);
@@ -80,20 +90,19 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     };
 
     const updateState = async (updates: Partial<LiveState>) => {
-        const newState = { ...liveState, ...updates, timestamp: Date.now() };
-
-        // Optimistic update
+        const newState: LiveState = { ...liveState, ...updates, timestamp: Date.now() };
         setLiveState(newState);
 
         if (isFirebaseEnabled && db) {
+            const sanitized = Object.fromEntries(
+                Object.entries(newState).filter(([, v]) => v !== undefined)
+            );
             await setDoc(doc(db, 'sessions', 'live'), {
-                ...newState,
+                ...sanitized,
                 updatedAt: serverTimestamp()
             });
         } else {
             localStorage.setItem('edem_live_session', JSON.stringify(newState));
-            // Manually trigger storage event for current tab (storage event only fires on OTHER tabs)
-            // But since we use React state, current tab is already updated.
         }
     };
 
@@ -103,11 +112,6 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
 
     const sendSignal = async (signal: string) => {
         await updateState({ currentSignal: signal });
-
-        // Auto-clear transient signals after 5 seconds if needed, 
-        // but user might want them to persist. Let's keep them persistent until changed 
-        // or explicitly cleared, but "Predicador subiendo" sounds like a state.
-        // "Intro", "Verso" are states.
     };
 
     const clearSignal = async () => {
@@ -118,6 +122,24 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
         await updateState({ activeSongId: null });
     };
 
+    const assignSingerToLines = async (lineIndexes: number[], singerKey: string | null, songId?: string) => {
+        const updated: VoiceAssignments = { ...liveState.voiceAssignments };
+        lineIndexes.forEach(idx => {
+            // If songId provided (mix context), use "songId:lineIdx" as key
+            const key = songId ? `${songId}:${idx}` : String(idx);
+            if (singerKey === null) {
+                delete updated[key];
+            } else {
+                updated[key] = singerKey;
+            }
+        });
+        await updateState({ voiceAssignments: updated });
+    };
+
+    const clearVoiceAssignments = async () => {
+        await updateState({ voiceAssignments: {} });
+    };
+
     return (
         <LiveSessionContext.Provider value={{
             liveState,
@@ -126,7 +148,9 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
             setActiveSong,
             sendSignal,
             clearSignal,
-            clearActiveSong
+            clearActiveSong,
+            assignSingerToLines,
+            clearVoiceAssignments,
         }}>
             {children}
         </LiveSessionContext.Provider>
