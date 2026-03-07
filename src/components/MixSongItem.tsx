@@ -5,6 +5,7 @@ import { Music, User, ChevronDown, Timer } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
 import { Metronome } from './Metronome';
+import { SongContent } from './SongContent';
 
 interface MixSongItemProps {
     song: Song;
@@ -28,12 +29,9 @@ export function MixSongItem({ song, index, voiceMode, activeSinger }: MixSongIte
         return transposeContent(song.content, semitones, song.key);
     }, [song.content, song.key, selectedKey]);
 
-    // Key format for voice assignments in a mix: "songId:lineIdx"
-    const makeKey = (lineIdx: number) => `${song.id}:${lineIdx}`;
-
     const handleLineClick = (lineIdx: number) => {
         if (!isDirector || !voiceMode || activeSinger === null) return;
-        const key = makeKey(lineIdx);
+        const key = `${song.id}:${lineIdx}`;
         const current = voiceAssignments[key];
         const newSingerKey = current === activeSinger ? null : activeSinger;
         assignSingerToLines([lineIdx], newSingerKey, song.id);
@@ -45,100 +43,6 @@ export function MixSongItem({ song, index, voiceMode, activeSinger }: MixSongIte
             ([k, v]) => k.startsWith(`${song.id}:`) && v === s.key
         )
     );
-
-    const renderLine = (line: string, lineIdx: number) => {
-        const key = makeKey(lineIdx);
-        const singerKey = voiceAssignments[key];
-        const singerCfg = singerKey ? SINGER_COLORS.find(s => s.key === singerKey) : null;
-
-        const highlightClass = singerCfg ? singerCfg.light : '';
-        const borderClass = singerCfg
-            ? `border-l-4 ${singerCfg.border}`
-            : 'border-l-4 border-transparent';
-        const interactiveClass = (isDirector && voiceMode && activeSinger !== null)
-            ? 'cursor-pointer hover:opacity-75 select-none'
-            : '';
-
-        const hasChords = line.includes('[');
-
-        if (hasChords) {
-            const parts = line.split(/(\[[^\]]*\])/g);
-            type Segment = { chord: string; text: string };
-            const segments: Segment[] = [];
-            let idx = 0;
-            while (idx < parts.length) {
-                const part = parts[idx];
-                if (part.startsWith('[') && part.endsWith(']')) {
-                    const chord = part.replace(/[\[\]]/g, '');
-                    const text = parts[idx + 1] ?? '';
-                    segments.push({ chord, text });
-                    idx += 2;
-                } else {
-                    if (part !== '') segments.push({ chord: '', text: part });
-                    idx += 1;
-                }
-            }
-
-            return (
-                <div
-                    key={lineIdx}
-                    onClick={() => handleLineClick(lineIdx)}
-                    className={cn(
-                        'flex flex-wrap items-end mb-2 px-2 py-0.5 rounded-r-lg transition-all',
-                        highlightClass,
-                        borderClass,
-                        interactiveClass
-                    )}
-                >
-                    {singerCfg && (
-                        <span className={cn(
-                            'self-center mr-2 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none flex-shrink-0',
-                            singerCfg.bg, 'text-white'
-                        )}>
-                            {singerCfg.label}
-                        </span>
-                    )}
-                    {segments.map((seg, j) => (
-                        <span key={j} className="inline-flex flex-col items-start mr-0.5">
-                            <span className={cn(
-                                'font-bold text-sm leading-none mb-1',
-                                singerCfg ? singerCfg.text : 'text-secondary',
-                                !seg.chord && 'invisible'
-                            )}>
-                                {seg.chord || '\u00A0'}
-                            </span>
-                            <span className="text-text-main text-base leading-none whitespace-pre">
-                                {seg.text || '\u00A0'}
-                            </span>
-                        </span>
-                    ))}
-                </div>
-            );
-        }
-
-        return (
-            <div
-                key={lineIdx}
-                onClick={() => handleLineClick(lineIdx)}
-                className={cn(
-                    'mb-2 px-2 py-0.5 rounded-r-lg text-base leading-normal transition-all flex items-center gap-2',
-                    highlightClass,
-                    borderClass,
-                    interactiveClass
-                )}
-            >
-                {singerCfg && (
-                    <span className={cn(
-                        'flex-shrink-0 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none',
-                        singerCfg.bg, 'text-white'
-                    )}>
-                        {singerCfg.label}
-                    </span>
-                )}
-                <span>{line || '\u00A0'}</span>
-            </div>
-        );
-    };
 
     return (
         <div
@@ -251,9 +155,15 @@ export function MixSongItem({ song, index, voiceMode, activeSinger }: MixSongIte
             )}
 
             {/* Content */}
-            <div translate="no" className="notranslate font-mono text-base text-text-main px-1">
-                {transposedContent.split('\n').map((line, lineIdx) => renderLine(line, lineIdx))}
-            </div>
+            <SongContent
+                content={transposedContent}
+                voiceAssignments={voiceAssignments}
+                singerColors={SINGER_COLORS}
+                keyPrefix={song.id}
+                onLineClick={handleLineClick}
+                interactive={isDirector && voiceMode && activeSinger !== null}
+                size="sm"
+            />
         </div>
     );
 }

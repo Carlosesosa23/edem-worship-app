@@ -6,6 +6,7 @@ import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2, Palette, X, Share2,
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
 import { Metronome } from '../components/Metronome';
+import { SongContent } from '../components/SongContent';
 import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
 import { cn } from '../lib/utils';
 import { useShareSong } from '../hooks/useShareSong';
@@ -29,8 +30,6 @@ export function SongViewer() {
     // Director voice assignment mode
     const [voiceMode, setVoiceMode] = useState(false);
     const [activeSinger, setActiveSinger] = useState<string | null>(null);
-    // Lines selected in current drag/tap gesture (director only)
-    const [pendingLines, setPendingLines] = useState<Set<number>>(new Set());
 
     // Metronome panel
     const [metronomeOpen, setMetronomeOpen] = useState(false);
@@ -52,110 +51,11 @@ export function SongViewer() {
     const isTransposed = selectedKey !== song.key;
     const voiceAssignments = liveState.voiceAssignments ?? {};
 
-    // ── Director: toggle a line assignment ──────────────────────────────────
     const handleLineClick = (lineIdx: number) => {
         if (!isDirector || !voiceMode || activeSinger === null) return;
         const current = voiceAssignments[String(lineIdx)];
-        // If line already has this singer → remove it; else assign
         const newKey = current === activeSinger ? null : activeSinger;
         assignSingerToLines([lineIdx], newKey);
-    };
-
-    // ── Render a single content line ─────────────────────────────────────────
-    const renderLine = (line: string, lineIdx: number) => {
-        const singerKey = voiceAssignments[String(lineIdx)];
-        const singerCfg = singerKey ? SINGER_COLORS.find(s => s.key === singerKey) : null;
-
-        // Highlight style for this line
-        const highlightClass = singerCfg ? singerCfg.light : '';
-        const borderClass = singerCfg ? `border-l-4 ${singerCfg.border}` : 'border-l-4 border-transparent';
-
-        // Director interaction classes
-        const interactiveClass = (isDirector && voiceMode && activeSinger !== null)
-            ? 'cursor-pointer hover:opacity-80 select-none'
-            : '';
-
-        const hasChords = line.includes('[');
-
-        if (hasChords) {
-            const parts = line.split(/(\[[^\]]*\])/g);
-            type Segment = { chord: string; text: string };
-            const segments: Segment[] = [];
-            let idx = 0;
-            while (idx < parts.length) {
-                const part = parts[idx];
-                if (part.startsWith('[') && part.endsWith(']')) {
-                    const chord = part.replace(/[\[\]]/g, '');
-                    const text = parts[idx + 1] ?? '';
-                    segments.push({ chord, text });
-                    idx += 2;
-                } else {
-                    if (part !== '') segments.push({ chord: '', text: part });
-                    idx += 1;
-                }
-            }
-
-            return (
-                <div
-                    key={lineIdx}
-                    onClick={() => handleLineClick(lineIdx)}
-                    className={cn(
-                        'flex flex-wrap items-end mb-2 px-2 py-0.5 rounded-r-lg transition-all',
-                        highlightClass,
-                        borderClass,
-                        interactiveClass,
-                        pendingLines.has(lineIdx) && 'opacity-60'
-                    )}
-                >
-                    {/* Singer badge */}
-                    {singerCfg && (
-                        <span className={cn(
-                            'self-center mr-2 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none',
-                            singerCfg.bg, 'text-white'
-                        )}>
-                            {singerCfg.label}
-                        </span>
-                    )}
-                    {segments.map((seg, j) => (
-                        <span key={j} className="inline-flex flex-col items-start mr-0.5">
-                            <span className={cn(
-                                'font-bold text-sm leading-none mb-1',
-                                singerCfg ? singerCfg.text : 'text-secondary',
-                                !seg.chord && 'invisible'
-                            )}>
-                                {seg.chord || '\u00A0'}
-                            </span>
-                            <span className="text-text-main text-lg leading-none whitespace-pre">
-                                {seg.text || '\u00A0'}
-                            </span>
-                        </span>
-                    ))}
-                </div>
-            );
-        }
-
-        return (
-            <div
-                key={lineIdx}
-                onClick={() => handleLineClick(lineIdx)}
-                className={cn(
-                    'mb-2 px-2 py-0.5 rounded-r-lg text-lg leading-normal transition-all flex items-center gap-2',
-                    highlightClass,
-                    borderClass,
-                    interactiveClass
-                )}
-            >
-                {singerCfg && (
-                    <span className={cn(
-                        'flex-shrink-0 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none',
-                        singerCfg.bg, 'text-white'
-                    )}>
-                        {singerCfg.label}
-                    </span>
-                )}
-                <span>{line || '\u00A0'}</span>
-            </div>
-        );
     };
 
     return (
@@ -188,7 +88,7 @@ export function SongViewer() {
                     {/* Voice assignment toggle — director only */}
                     {isDirector && (
                         <button
-                            onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); setPendingLines(new Set()); }}
+                            onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); }}
                             className={cn(
                                 'p-2 rounded-lg transition-colors',
                                 voiceMode
@@ -241,7 +141,6 @@ export function SongViewer() {
                         {shareStatus === 'copied' || shareStatus === 'shared' ? (
                             <Check size={20} />
                         ) : (
-                            // Muestra Share2 si el dispositivo soporta Web Share API, Copy si no
                             'share' in navigator ? <Share2 size={20} /> : <Copy size={20} />
                         )}
                     </button>
@@ -317,7 +216,7 @@ export function SongViewer() {
                 </div>
             )}
 
-            <div className="p-6 max-w-3xl mx-auto">
+            <div className="p-4 max-w-3xl mx-auto">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-extrabold mb-2 bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent">{song.title}</h1>
                     <div className="flex flex-wrap items-center justify-center gap-4 text-text-muted text-sm">
@@ -347,9 +246,14 @@ export function SongViewer() {
                     )}
                 </div>
 
-                <div translate="no" className="notranslate font-mono text-lg text-text-main song-content">
-                    {transposedContent.split('\n').map((line, lineIdx) => renderLine(line, lineIdx))}
-                </div>
+                <SongContent
+                    content={transposedContent}
+                    voiceAssignments={voiceAssignments}
+                    singerColors={SINGER_COLORS}
+                    onLineClick={handleLineClick}
+                    interactive={isDirector && voiceMode && activeSinger !== null}
+                    size="base"
+                />
 
                 {song.youtubeUrl && (
                     <div className="mt-12 mb-8 border-t border-white/10 pt-8">
