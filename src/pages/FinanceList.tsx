@@ -264,11 +264,14 @@ function MonthlySummaryTable({ contributions, memberDebts }: { contributions: Co
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
     
-    // Generate options based on available contributions or just last 12 months
+    // Generate options: always include 12 months of current year, plus any months from existing contributions
     const monthOptions = useMemo(() => {
         const opts = new Set<string>();
-        const now = new Date();
-        opts.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+        
+        const currentYear = new Date().getFullYear();
+        for (let m = 1; m <= 12; m++) {
+            opts.add(`${currentYear}-${String(m).padStart(2, '0')}`);
+        }
         
         contributions.forEach(c => {
             const d = new Date(c.weekStart);
