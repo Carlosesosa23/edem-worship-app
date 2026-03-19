@@ -255,6 +255,161 @@ function DebtCard({ debt }: { debt: MemberDebt }) {
     );
 }
 
+
+// ─── Monthly Summary Table ────────────────────────────────────────────────────
+
+function MonthlySummaryTable({ contributions, memberDebts }: { contributions: Contribution[], memberDebts: MemberDebt[] }) {
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+    
+    // Generate options based on available contributions or just last 12 months
+    const monthOptions = useMemo(() => {
+        const opts = new Set<string>();
+        const now = new Date();
+        opts.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+        
+        contributions.forEach(c => {
+            const d = new Date(c.weekStart);
+            opts.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        });
+        
+        return Array.from(opts).sort((a, b) => b.localeCompare(a)).map(val => {
+            const [y, m] = val.split('-');
+            const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+            return {
+                value: val,
+                label: date.toLocaleDateString('es', { month: 'long', year: 'numeric' })
+            };
+        });
+    }, [contributions]);
+
+    // Compute weeks (Mondays) in the selected month
+    const weeksInMonth = useMemo(() => {
+        const [y, m] = selectedMonth.split('-');
+        const year = parseInt(y);
+        const month = parseInt(m) - 1; // 0-indexed
+        
+        const weeks: number[] = [];
+        const date = new Date(year, month, 1);
+        
+        while (date.getDay() !== 1) { // 1 is Monday
+            date.setDate(date.getDate() + 1);
+        }
+        
+        while (date.getMonth() === month) {
+            weeks.push(date.getTime());
+            date.setDate(date.getDate() + 7);
+        }
+        return weeks;
+    }, [selectedMonth]);
+
+    // Organize member data
+    const memberRows = useMemo(() => {
+        return memberDebts.map(debt => {
+            const memberName = debt.memberName;
+            let totalMonthly = 0;
+            const weekStatus = weeksInMonth.map(weekTs => {
+                const c = contributions.find(c => c.memberName === memberName && c.weekStart === weekTs);
+                if (c) {
+                    totalMonthly += c.amount;
+                    return { ts: weekTs, status: 'paid', amount: c.amount };
+                } else {
+                    return { ts: weekTs, status: 'pending', amount: 0 };
+                }
+            });
+            
+            return {
+                memberName,
+                weeks: weekStatus,
+                totalMonthly
+            };
+        });
+    }, [memberDebts, weeksInMonth, contributions]);
+    
+    const sortedRows = [...memberRows].sort((a, b) => a.memberName.localeCompare(b.memberName));
+
+    return (
+        <div className="glass-panel rounded-2xl overflow-hidden mt-6 overflow-x-auto">
+            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-4">
+                <p className="text-sm font-bold text-text-main flex items-center gap-2">
+                    <BarChart3 size={16} className="text-primary" />
+                    Resumen Mensual
+                </p>
+                <select 
+                    value={selectedMonth} 
+                    onChange={e => setSelectedMonth(e.target.value)}
+                    className="bg-background border border-white/10 text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary/50"
+                >
+                    {monthOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label.charAt(0).toUpperCase() + opt.label.slice(1)}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            <div className="overflow-x-auto pb-2">
+                <table className="w-full text-left text-xs whitespace-nowrap table-fixed min-w-[800px]">
+                    <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                            <th className="px-5 py-3 font-semibold w-40 border-r border-white/5">Miembros</th>
+                            <th className="px-5 py-3 font-semibold w-24 border-r border-white/5">Mes</th>
+                            {weeksInMonth.map((w, i) => (
+                                <th key={w} className="px-5 py-3 font-semibold border-r border-white/5 text-center">
+                                    Semana {i + 1}
+                                </th>
+                            ))}
+                            <th className="px-5 py-3 font-semibold w-32 border-r border-white/5 text-right">Monto mensual</th>
+                            <th className="px-5 py-3 font-semibold w-24 border-r border-white/5 text-center">Extras</th>
+                            <th className="px-5 py-3 font-semibold w-24 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {sortedRows.length === 0 ? (
+                            <tr>
+                                <td colSpan={weeksInMonth.length + 5} className="text-center py-8 text-text-muted">
+                                    No hay miembros registrados
+                                </td>
+                            </tr>
+                        ) : sortedRows.map((row) => {
+                            const monthLabelFull = monthOptions.find(o => o.value === selectedMonth)?.label || '';
+                            const monthLabel = monthLabelFull.split(' ')[0];
+                            const displayMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+                            
+                            return (
+                            <tr key={row.memberName} className="hover:bg-white/5 transition-colors group">
+                                <td className="px-5 py-3 font-bold text-text-main border-r border-white/5">{row.memberName}</td>
+                                <td className="px-5 py-3 border-r border-white/5 text-text-muted">{displayMonth}</td>
+                                
+                                {row.weeks.map(w => (
+                                    <td key={w.ts} className="px-5 py-3 border-r border-white/5 text-center">
+                                        {w.status === 'paid' ? (
+                                            <span className="font-semibold text-green-400 bg-green-500/10 px-2 py-1 rounded-full text-[10px]">
+                                                L {w.amount.toFixed(2)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-text-muted/50 text-[10px]">Pendiente</span>
+                                        )}
+                                    </td>
+                                ))}
+                                
+                                <td className="px-5 py-3 font-semibold border-r border-white/5 text-right text-text-main">
+                                    {row.totalMonthly > 0 ? `L ${row.totalMonthly.toFixed(2)}` : <span className="text-text-muted/30">-</span>}
+                                </td>
+                                <td className="px-5 py-3 border-r border-white/5 text-center text-text-muted/30">-</td>
+                                <td className="px-5 py-3 font-bold text-primary text-right bg-white/[0.02] group-hover:bg-white/[0.05] transition-colors">
+                                    {row.totalMonthly > 0 ? `L ${row.totalMonthly.toFixed(2)}` : <span className="text-text-muted/30">-</span>}
+                                </td>
+                            </tr>
+                        )})}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 type ActiveTab = 'resumen' | 'aportaciones' | 'gastos' | 'deudas';
@@ -493,6 +648,9 @@ export function FinanceList() {
                             </div>
                         )}
                     </div>
+
+                    {/* Tabla Resumen Mensual */}
+                    <MonthlySummaryTable contributions={contributions} memberDebts={memberDebts} />
                 </div>
             )}
 
