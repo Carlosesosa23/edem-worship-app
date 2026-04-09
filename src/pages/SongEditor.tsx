@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
 import { Save, ArrowLeft, User, Music, Youtube, Mic, Hash, ChevronDown } from 'lucide-react';
 import { MAJOR_KEYS, MINOR_KEYS, normalizeContent } from '../lib/transpose';
-// framer-motion and utils available if needed
+import { SECTION_NAMES, sectionMarker } from '../lib/songParser';
 
 export function SongEditor() {
     const { id } = useParams();
@@ -20,6 +20,32 @@ export function SongEditor() {
     const [bestSinger, setBestSinger] = useState(existingSong?.bestSinger || '');
     const [youtubeUrl, setYoutubeUrl] = useState(existingSong?.youtubeUrl || '');
     const [loading, setLoading] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    /** Inserta texto en la posición actual del cursor en el textarea */
+    const insertAtCursor = (text: string) => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const before = content.slice(0, start);
+        const after = content.slice(end);
+
+        // Si no estamos al inicio de una línea, agregar salto primero
+        const needsNewline = before.length > 0 && !before.endsWith('\n');
+        const insert = (needsNewline ? '\n' : '') + text + '\n';
+
+        const newContent = before + insert + after;
+        setContent(newContent);
+
+        // Restaurar foco y cursor después del insert
+        requestAnimationFrame(() => {
+            ta.focus();
+            const newPos = start + insert.length;
+            ta.setSelectionRange(newPos, newPos);
+        });
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -70,7 +96,7 @@ export function SongEditor() {
                 </div>
 
                 <button
-                    onClick={(e) => handleSubmit(e as any)}
+                    onClick={(e) => handleSubmit(e as unknown as FormEvent)}
                     disabled={loading}
                     className="btn-primary h-10 px-6 shadow-lg shadow-primary/20"
                 >
@@ -184,21 +210,61 @@ export function SongEditor() {
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted/40 border-b border-white/[0.03] pb-3">Cuerpo de la Obra</h3>
                             <div className="space-y-4">
+                                {/* Section Insertion Toolbar */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted/40">Insertar Sección</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {SECTION_NAMES.map(name => (
+                                            <button
+                                                key={name}
+                                                type="button"
+                                                onClick={() => insertAtCursor(sectionMarker(name))}
+                                                className="px-3 py-1 rounded-full bg-surface-low hover:bg-surface-high text-[10px] font-bold text-text-muted hover:text-primary transition-all active:scale-95 border border-white/[0.03]"
+                                            >
+                                                {name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div className="bg-surface-lowest/30 p-6 rounded-[2rem] border border-white/[0.03] shadow-inner space-y-4">
                                     <div className="flex items-center justify-between px-2">
                                         <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted/40">Editor Monospaciado</span>
                                         <span className="text-[9px] font-bold uppercase tracking-widest text-primary/60">Notación: [Acorde] Letra</span>
                                     </div>
                                     <textarea
+                                        ref={textareaRef}
                                         className="w-full bg-transparent border-none p-0 font-mono text-sm leading-relaxed resize-none h-[400px] focus:ring-0 outline-none scrollbar-hide"
                                         value={content}
                                         onChange={e => setContent(e.target.value)}
-                                        placeholder={"[C] Sublime gracia [F] del Señor\n[C] Que a un infeliz [G] salvó..."}
+                                        placeholder={"{Intro}\n[C]  [F]  [Am]  [G]\n\n{Verso}\n[C] Sublime gracia [F] del Señor\n[C] Que a un infeliz [G] salvó\n\n{Coro}\n[F] Amazing [C] Grace // x2\n[Am] How sweet [G] the sound //"}
                                     />
                                 </div>
-                                <p className="text-[9px] text-text-muted/30 uppercase tracking-[0.2em] text-center px-4">
-                                    Tip: Coloque los acordes entre corchetes justo antes de la sílaba correspondiente.
-                                </p>
+
+                                {/* Format Guide */}
+                                <div className="bg-surface-low/30 rounded-2xl p-4 space-y-3 border border-white/[0.03]">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60">Guía de formato</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] text-text-muted">
+                                        <div className="space-y-1.5">
+                                            <p className="font-bold text-text-main">Acordes</p>
+                                            <p className="font-mono text-primary/70">[C] texto [Am7] texto</p>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <p className="font-bold text-text-main">Secciones</p>
+                                            <p className="font-mono text-primary/70">{'{Verso}'} {'{Coro}'} {'{Puente}'}</p>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <p className="font-bold text-text-main">Repetir línea</p>
+                                            <p className="font-mono text-primary/70">Letra aquí // x2</p>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <p className="font-bold text-text-main">Barra de repetición</p>
+                                            <p className="font-mono text-primary/70">Línea con barra //</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

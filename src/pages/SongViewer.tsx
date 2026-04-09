@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
 import { transposeContent, normalizeContent, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
-import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2, Palette, X, Share2, Check, Timer, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2, Palette, X, Share2, Check, Timer, ChevronDown, Maximize2 } from 'lucide-react';
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
 import { Metronome } from '../components/Metronome';
 import { SongContent } from '../components/SongContent';
+import { FullscreenLyrics } from '../components/FullscreenLyrics';
 import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
 import { cn } from '../lib/utils';
 import { useShareSong } from '../hooks/useShareSong';
@@ -30,6 +31,7 @@ export function SongViewer() {
     const [voiceMode, setVoiceMode] = useState(false);
     const [activeSinger, setActiveSinger] = useState<string | null>(null);
     const [metronomeOpen, setMetronomeOpen] = useState(false);
+    const [singerModeOpen, setSingerModeOpen] = useState(false);
     const { share, status: shareStatus } = useShareSong();
 
     const transposedContent = useMemo(() => {
@@ -56,6 +58,20 @@ export function SongViewer() {
 
     return (
         <div className="bg-background min-h-screen pb-32 animate-fade-in sm:px-4">
+            {/* Fullscreen Singer Mode */}
+            <AnimatePresence>
+                {singerModeOpen && (
+                    <FullscreenLyrics
+                        content={transposedContent}
+                        title={song.title}
+                        songKey={selectedKey}
+                        voiceAssignments={voiceAssignments}
+                        singerColors={SINGER_COLORS}
+                        onClose={() => setSingerModeOpen(false)}
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Header Sticky - Editorial Glassmorphism */}
             <div className="sticky top-0 z-30 glass-panel border-b border-white/[0.03] px-4 py-3 flex justify-between items-center shadow-2xl backdrop-blur-2xl">
                 <div className="flex items-center gap-3">
@@ -96,6 +112,15 @@ export function SongViewer() {
                     <div className="h-6 w-[1px] bg-white/5 mx-1" />
 
                     <div className="flex items-center gap-1">
+                        {/* Singer Mode Button */}
+                        <button
+                            onClick={() => setSingerModeOpen(true)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full text-text-muted hover:bg-white/5 hover:text-primary transition-all"
+                            title="Modo Cantante (pantalla completa)"
+                        >
+                            <Maximize2 size={20} />
+                        </button>
+
                         {isDirector && (
                             <button
                                 onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); }}
@@ -213,6 +238,17 @@ export function SongViewer() {
                             <Mic size={14} /> Voz Predeterminada: {song.bestSinger}
                         </div>
                     )}
+
+                    {/* Singer Mode CTA - visible on mobile */}
+                    <div className="sm:hidden">
+                        <button
+                            onClick={() => setSingerModeOpen(true)}
+                            className="inline-flex items-center gap-2 bg-surface-low hover:bg-surface-high text-text-main font-bold text-xs px-5 py-2.5 rounded-full transition-all border border-white/5"
+                        >
+                            <Maximize2 size={16} className="text-primary" />
+                            Modo Cantante
+                        </button>
+                    </div>
                 </div>
 
                 {/* Metronome Collapsible */}

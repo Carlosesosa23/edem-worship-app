@@ -13,36 +13,35 @@ export function HomePage() {
     const safeSongs = songs || [];
     const safeMixes = mixes || [];
     const recentSongs = [...safeSongs].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
-    const upcomingMix = safeMixes[0]; 
+    const upcomingMix = safeMixes[0];
 
     return (
         <div className="space-y-12 pb-20 animate-fade-in">
             {/* Hero Section */}
             <section className="relative overflow-hidden rounded-[2rem] bg-surface-lowest p-8 md:p-12">
                 <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-                
+
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                     <div className="space-y-4 max-w-lg">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold tracking-widest uppercase">
                             <Sparkles size={12} />
-                            Ministerio de Edificación
+                            Ministerio de Alabanza
                         </div>
                         <h1 className="text-4xl md:text-5xl serif-title font-bold text-primary leading-tight">
                             La excelencia es nuestra <span className="italic text-text-main">alabanza.</span>
                         </h1>
                         <p className="text-text-muted text-sm md:text-base leading-relaxed">
-                            Bienvenido al panel central de Edem Worship. Aquí gestionamos la armonía de cada servicio y la preparación de cada corazón.
+                            Bienvenido a Edem Worship. Aquí gestionamos la armonía de cada servicio y la preparación de cada corazón.
                         </p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                         <button
                             onClick={toggleDirectorMode}
-                            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${
-                                isDirector 
-                                ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' 
+                            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${isDirector
+                                ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
                                 : 'bg-surface-high text-text-muted hover:text-text-main hover:bg-surface-high/80'
-                            }`}
+                                }`}
                         >
                             <Mic2 size={18} />
                             {isDirector ? "Modo Director On" : "Modo Ensayo"}
@@ -79,7 +78,7 @@ export function HomePage() {
                             <Plus size={24} />
                         </div>
                         <div className="text-left">
-                            <div className="text-xl font-bold serif-title">Configurar Servicio</div>
+                            <div className="text-xl font-bold serif-title">Crear nuevo Servicio</div>
                             <div className="text-xs text-text-muted mt-0.5">Crear un nuevo mix musical para el domingo</div>
                         </div>
                     </div>
@@ -104,9 +103,9 @@ export function HomePage() {
                     <div className="space-y-4">
                         {recentSongs.length > 0 ? (
                             recentSongs.map(song => (
-                                <Link 
-                                    key={song.id} 
-                                    to={`/songs/${song.id}`} 
+                                <Link
+                                    key={song.id}
+                                    to={`/songs/${song.id}`}
                                     className="tonal-card p-4 flex items-center gap-4 group hover:bg-surface-high transition-all"
                                 >
                                     <div className="bg-surface-lowest w-12 h-12 rounded-xl flex items-center justify-center text-primary font-bold serif-title text-sm border-white/[0.02]">
@@ -142,7 +141,7 @@ export function HomePage() {
                             <div className="absolute top-0 right-0 p-8 text-primary opacity-[0.03] scale-[4] rotate-12 group-hover:rotate-6 transition-transform duration-700">
                                 <Calendar size={100} />
                             </div>
-                            
+
                             <div className="relative z-10 space-y-6">
                                 <div className="space-y-2">
                                     <div className="text-[10px] text-primary font-bold uppercase tracking-[0.2em]">Repertorio Confirmado</div>
