@@ -1,29 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0f111a;
-  --color-surface: #1e2136;
-  --color-surface-highlight: #2c304d;
-  --color-primary: #a855f7;
-  --color-primary-hover: #9333ea;
-  --color-secondary: #0ea5e9;
-  --color-accent: #f43f5e;
-  --color-text-main: #f8fafc;
-  --color-text-muted: #cbd5e1;
+  --color-background: #0d1322;
+  --color-surface: #191f2f;
+  --color-surface-high: #242a3a;
+  --color-surface-lighter: #2f3545;
+  --color-surface-low: #151b2b;
+  --color-surface-lowest: #080e1d;
+  
+  --color-primary: #f2ca50;
+  --color-primary-container: #d4af37;
+  --color-on-primary: #241a00;
+  
+  --color-secondary: #c1c6db;
+  --color-on-secondary: #2a3040;
+  
+  --color-text-main: #dde2f8;
+  --color-text-muted: #d0c5af;
 
+  --font-serif: "Noto Serif", serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-slide-up: slide-up 0.4s ease-out;
 
   @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes slide-up {
@@ -31,7 +34,6 @@
       transform: translateY(20px);
       opacity: 0;
     }
-
     to {
       transform: translateY(0);
       opacity: 1;
@@ -45,11 +47,10 @@
 
 body {
   background-color: var(--color-background);
-  /* "Aurora" effect: joyful, elegant, and brighter gradients */
+  /* "Elysian" effect: deep midnight with subtle golden illumination */
   background-image: 
-    radial-gradient(circle at 10% 0%, rgba(168, 85, 247, 0.25) 0%, transparent 45%),
-    radial-gradient(circle at 90% 20%, rgba(14, 165, 233, 0.25) 0%, transparent 45%),
-    radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.2) 0%, transparent 50%);
+    radial-gradient(circle at 0% 0%, rgba(242, 202, 80, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(212, 175, 55, 0.05) 0%, transparent 40%);
   background-attachment: fixed;
   color: var(--color-text-main);
   font-family: var(--font-sans);
@@ -57,23 +58,72 @@ body {
   min-height: 100vh;
 }
 
+h1, h2, h3, .serif-title {
+  font-family: var(--font-serif);
+  @apply tracking-tight;
+}
+
 /* Custom Utilities */
 @layer components {
   .glass-panel {
-    /* More translucent to let the bright gradients shine through elegantly */
-    @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl;
+    /* Editorial Glass: very subtle, focused on depth, no border (the "No-Line" rule) */
+    @apply bg-white/5 backdrop-blur-xl shadow-2xl rounded-2xl;
+  }
+
+  .tonal-card {
+    /* Using tonal shifts instead of borders */
+    @apply bg-surface-low hover:bg-surface transition-colors duration-300 rounded-2xl p-6;
   }
 
   .btn-primary {
-    /* Vibrant gradient for the primary button */
-    @apply bg-gradient-to-r from-primary to-secondary hover:from-primary-hover hover:to-[#0284c7] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/30 active:scale-95;
+    /* Gradient Gold button */
+    @apply bg-gradient-to-br from-primary to-primary-container hover:brightness-110 text-on-primary font-bold py-3 px-6 rounded-full transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2;
   }
 
   .btn-secondary {
-    @apply bg-white/5 hover:bg-white/10 text-text-main font-semibold py-3 px-6 rounded-xl transition-all border border-white/10 active:scale-95 shadow-md backdrop-blur-md;
+    @apply bg-surface-high hover:bg-surface-lighter text-text-main font-semibold py-3 px-6 rounded-full transition-all active:scale-95 shadow-md flex items-center justify-center gap-2;
   }
 
   .input-field {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/60 transition-all w-full placeholder-text-muted/60 shadow-inner;
+    @apply bg-surface-lowest border-none rounded-xl px-4 py-3 text-text-main focus:ring-2 focus:ring-primary/40 transition-all w-full placeholder-text-muted/40;
   }
+
+  .filter-pill {
+    @apply px-4 py-1.5 rounded-full text-sm font-medium transition-all;
+  }
+
+  .filter-pill-active {
+    @apply bg-primary text-on-primary shadow-md;
+  }
+
+  .filter-pill-inactive {
+    @apply bg-surface-high text-text-muted hover:bg-secondary/10;
+  }
+}
+
+/* Custom Editorial Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-high);
+  border-radius: 10px;
+  border: 2px solid var(--color-background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+  opacity: 0.5;
+}
+
+/* Text Selection */
+::selection {
+  background: rgba(242, 202, 80, 0.2);
+  color: var(--color-primary);
 }

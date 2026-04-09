@@ -18,69 +18,108 @@ export function Layout() {
     ];
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background text-text-main">
+        <div className="flex h-screen overflow-hidden bg-background text-text-main font-sans">
             {/* Desktop Sidebar */}
-            <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-white/5 m-4 rounded-2xl">
-                <div className="p-8 flex items-center justify-center gap-3">
-                    <img src="/logo.png" alt="Edem Logo" className="w-10 h-10 object-contain" />
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent tracking-tighter">
-                        EDEM WORSHIP
-                    </h1>
+            <aside className="hidden md:flex flex-col w-64 glass-panel m-4 overflow-hidden pointer-events-auto">
+                <div className="p-8 pb-4 flex flex-col items-start gap-4">
+                    <img src="/logo.png" alt="Edem Logo" className="w-12 h-12 object-contain" />
+                    <div className="space-y-0.5">
+                        <h1 className="text-2xl serif-title font-bold text-primary tracking-tight">
+                            EDEM
+                        </h1>
+                        <p className="text-[10px] tracking-[0.2em] font-semibold text-text-muted uppercase">
+                            Worship Academy
+                        </p>
+                    </div>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2">
-                    {navItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => clsx(
-                                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                                isActive
-                                    ? "bg-primary text-white shadow-lg shadow-primary/25"
-                                    : "text-text-muted hover:bg-white/5 hover:text-white"
-                            )}
-                        >
-                            <item.icon size={20} />
-                            <span className="font-medium">{item.label}</span>
-                        </NavLink>
-                    ))}
+                <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.path || 
+                                       (item.path !== '/' && location.pathname.startsWith(item.path));
+                        
+                        return (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className={clsx(
+                                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative",
+                                    isActive
+                                        ? "text-primary bg-primary/5"
+                                        : "text-text-muted hover:text-text-main hover:bg-white/[0.03]"
+                                )}
+                            >
+                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                <span className={clsx(
+                                    "font-medium transition-transform duration-300",
+                                    isActive ? "translate-x-1" : "group-hover:translate-x-1"
+                                )}>
+                                    {item.label}
+                                </span>
+                                {isActive && (
+                                    <motion.div 
+                                        layoutId="nav-pill"
+                                        className="absolute left-0 w-1 h-6 bg-primary rounded-r-full"
+                                    />
+                                )}
+                            </NavLink>
+                        );
+                    })}
                 </nav>
 
-                <div className="p-4">
-                    <div className="bg-surface rounded-xl p-4 border border-white/5">
-                        <p className="text-xs text-text-muted text-center">Edem Worship v1.0</p>
+                <div className="p-6 mt-auto">
+                    <div className="bg-surface-low rounded-2xl p-4 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold serif-title" style={{ fontFamily: 'var(--font-serif)' }}>
+                            EW
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-text-muted font-medium truncate">Edem Worship v1.2</p>
+                            <p className="text-[9px] text-primary/60 font-semibold tracking-wider">PREMIUM EDITION</p>
+                        </div>
                     </div>
                 </div>
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 z-50 pb-safe">
-                <div className="flex justify-around items-center h-16">
-                    {navItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => clsx(
-                                "flex flex-col items-center justify-center w-full h-full transition-colors",
-                                isActive ? "text-primary" : "text-text-muted"
-                            )}
-                        >
-                            <motion.div
-                                whileTap={{ scale: 0.9 }}
-                                className={clsx("p-1 rounded-full", location.pathname === item.path && "bg-primary/10")}
+            <nav className="md:hidden fixed bottom-4 left-4 right-4 h-16 glass-panel z-50 px-2">
+                <div className="flex justify-around items-center h-full">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.path || 
+                                       (item.path !== '/' && location.pathname.startsWith(item.path));
+
+                        return (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className={clsx(
+                                    "flex flex-col items-center justify-center h-12 px-3 rounded-xl transition-all relative",
+                                    isActive ? "text-primary" : "text-text-muted hover:text-text-main"
+                                )}
                             >
-                                <item.icon size={24} strokeWidth={location.pathname === item.path ? 2.5 : 2} />
-                            </motion.div>
-                            <span className="text-[10px] font-medium mt-1">{item.label}</span>
-                        </NavLink>
-                    ))}
+                                <motion.div
+                                    whileTap={{ scale: 0.9 }}
+                                    className="relative z-10"
+                                >
+                                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                                </motion.div>
+                                <span className="text-[9px] font-bold mt-1 tracking-wider uppercase z-10">{item.label}</span>
+                                {isActive && (
+                                    <motion.div 
+                                        layoutId="mobile-nav-pill"
+                                        className="absolute inset-0 bg-primary/10 rounded-xl"
+                                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                    />
+                                )}
+                            </NavLink>
+                        );
+                    })}
                 </div>
             </nav>
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth pb-20 md:pb-0">
-                <NowPlayingBar />
-                <div className="max-w-7xl mx-auto p-4 md:p-8">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth p-4 md:p-10 pb-24 md:pb-10">
+                <div className="max-w-6xl mx-auto space-y-8">
+                    <NowPlayingBar />
                     <Outlet />
                 </div>
             </main>

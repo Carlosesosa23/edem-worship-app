@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAgenda } from '../contexts/AgendaContext';
 import { useMixes } from '../contexts/MixesContext';
 import type { Participant, WorshipEvent } from '../types';
-import { ArrowLeft, Plus, X, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Calendar, Clock, Users, FileText, Disc, ChevronDown, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 const EVENT_TYPES = [
-    { value: 'servicio', label: 'Servicio' },
-    { value: 'ensayo', label: 'Ensayo' },
-    { value: 'otro', label: 'Otro' },
+    { value: 'servicio', label: 'Servicio Dominical' },
+    { value: 'ensayo', label: 'Ensayo / Práctica' },
+    { value: 'otro', label: 'Evento Especial' },
 ] as const;
 
 export function AgendaEditor() {
@@ -31,6 +33,7 @@ export function AgendaEditor() {
     const [notes, setNotes] = useState(existing?.notes ?? '');
     const [participants, setParticipants] = useState<Participant[]>(existing?.participants ?? []);
     const [newName, setNewName] = useState('');
+    const [newRole, setNewRole] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -47,8 +50,9 @@ export function AgendaEditor() {
 
     const addParticipant = () => {
         if (!newName.trim()) return;
-        setParticipants(prev => [...prev, { name: newName.trim() }]);
+        setParticipants(prev => [...prev, { name: newName.trim(), role: newRole.trim() || undefined }]);
         setNewName('');
+        setNewRole('');
     };
 
     const removeParticipant = (index: number) => {
@@ -79,137 +83,215 @@ export function AgendaEditor() {
             navigate('/agenda');
         } catch (error: unknown) {
             console.error('Error saving event:', error);
-            const msg = error instanceof Error ? error.message : String(error);
-            if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
-                alert('❌ Error de permisos en Firebase.\n\nNecesitas agregar la colección "events" en las reglas de Firestore.\n\nVe a Firebase → Firestore → Reglas y agrega:\n  match /events/{id} {\n    allow read, write: if true;\n  }');
-            } else {
-                alert(`❌ Error al guardar: ${msg}`);
-            }
+            alert(`Error al guardar: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setSaving(false);
         }
     };
 
-    const inputCls = "w-full bg-surface border border-white/10 rounded-xl px-4 py-3 text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary/50 transition-colors";
-
     return (
-        <div className="bg-background min-h-screen text-text-main pb-20 font-sans">
+        <div className="bg-background min-h-screen text-text-main pb-32 animate-fade-in font-sans">
             {/* Header */}
-            <div className="sticky top-0 z-20 glass-panel border-b border-white/5 px-4 py-3 flex justify-between items-center backdrop-blur-xl shadow-lg">
-                <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <ArrowLeft size={24} />
-                </button>
-                <h2 className="font-bold text-lg">{isEditing ? 'Editar Evento' : 'Nuevo Evento'}</h2>
+            <div className="sticky top-0 z-30 glass-panel border-b border-white/[0.03] px-4 py-3 flex items-center justify-between shadow-2xl backdrop-blur-2xl">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-all text-text-muted hover:text-primary active:scale-90">
+                        <ArrowLeft size={22} />
+                    </button>
+                    <div className="h-6 w-[1px] bg-white/5 mx-2" />
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Programación Ministerial</p>
+                        <h2 className="serif-title font-bold text-sm text-text-main">
+                            {isEditing ? 'Revisión de Agenda' : 'Planificación Anual'}
+                        </h2>
+                    </div>
+                </div>
                 <button
                     onClick={handleSave}
                     disabled={saving || !title.trim()}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                    className="btn-primary h-10 px-6 shadow-lg shadow-primary/20"
                 >
-                    <Save size={16} />
-                    {saving ? 'Guardando...' : 'Guardar'}
+                    <Save size={18} />
+                    <span className="hidden sm:inline">Preservar Evento</span>
+                    <span className="sm:hidden">Guardar</span>
                 </button>
             </div>
 
-            <div className="max-w-2xl mx-auto p-6 space-y-6">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 space-y-16">
+                <form className="space-y-16">
+                    {/* Title Section */}
+                    <header className="space-y-8 text-center sm:text-left">
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/60 block ml-1">Contexto del Evento</label>
+                            <input
+                                type="text"
+                                required
+                                className="bg-transparent border-none p-0 w-full serif-title text-4xl md:text-6xl font-bold text-text-main placeholder:text-text-muted/10 focus:ring-0 outline-none transition-all"
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
+                                placeholder="Título de la convocatoria..."
+                            />
+                        </div>
+                        <div className="h-[1px] w-full bg-white/[0.03]" />
+                    </header>
 
-                {/* Title */}
-                <div>
-                    <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Título</label>
-                    <input
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        placeholder="Ej. Servicio Domingo"
-                        className={inputCls}
-                    />
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
+                        {/* Core Data Side */}
+                        <div className="space-y-10">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted/40 border-b border-white/[0.03] pb-3 text-center sm:text-left">Cédula del Evento</h3>
+                            
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">
+                                            <Calendar size={12} className="text-primary/60" /> Fecha Señalada
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            className="input-field bg-surface-low/50 hover:bg-surface-low focus:bg-surface-lowest shadow-inner [color-scheme:dark]"
+                                            value={date}
+                                            onChange={e => setDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">
+                                            <Clock size={12} className="text-secondary/60" /> Hora de Cita
+                                        </label>
+                                        <input
+                                            type="time"
+                                            className="input-field bg-surface-low/50 hover:bg-surface-low focus:bg-surface-lowest shadow-inner [color-scheme:dark]"
+                                            value={time}
+                                            onChange={e => setTime(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
 
-                {/* Date & Time */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Fecha</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                        <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Hora (opcional)</label>
-                        <input type="time" value={time} onChange={e => setTime(e.target.value)} className={inputCls} />
-                    </div>
-                </div>
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">Categoría del Fluir</label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {EVENT_TYPES.map(t => (
+                                            <button
+                                                key={t.value}
+                                                type="button"
+                                                onClick={() => setType(t.value)}
+                                                className={cn(
+                                                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm",
+                                                    type === t.value 
+                                                        ? "bg-primary text-on-primary border-primary shadow-xl shadow-primary/10" 
+                                                        : "bg-surface-low border-white/5 text-text-muted/60 hover:bg-surface-high hover:text-text-main"
+                                                )}
+                                            >
+                                                {t.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                {/* Type */}
-                <div>
-                    <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Tipo de Evento</label>
-                    <div className="flex gap-3 flex-wrap">
-                        {EVENT_TYPES.map(t => (
-                            <button
-                                key={t.value}
-                                onClick={() => setType(t.value)}
-                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${type === t.value ? 'bg-primary text-white border-primary' : 'border-white/10 text-text-muted hover:border-white/30'}`}
-                            >
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">
+                                        <Disc size={12} className="text-primary/60" /> Mix del Repertorio (Opcional)
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            className="input-field bg-surface-low/50 hover:bg-surface-low focus:bg-surface-lowest shadow-inner appearance-none cursor-pointer"
+                                            value={mixId}
+                                            onChange={e => setMixId(e.target.value)}
+                                        >
+                                            <option value="" className="bg-surface-low">Sin mix asociado</option>
+                                            {mixes.map(m => (
+                                                <option key={m.id} value={m.id} className="bg-surface-low">{m.title}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none group-hover:text-primary transition-colors" />
+                                    </div>
+                                </div>
 
-                {/* Link Mix */}
-                {mixes.length > 0 && (
-                    <div>
-                        <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Mix asociado (opcional)</label>
-                        <select
-                            value={mixId}
-                            onChange={e => setMixId(e.target.value)}
-                            className={inputCls}
-                        >
-                            <option value="">Sin mix</option>
-                            {mixes.map(m => (
-                                <option key={m.id} value={m.id}>{m.title}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                {/* Participants */}
-                <div>
-                    <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Participantes</label>
-                    <div className="space-y-2 mb-3">
-                        {participants.map((p, i) => (
-                            <div key={i} className="flex items-center justify-between bg-surface px-4 py-2.5 rounded-xl border border-white/5">
-                                <span className="font-semibold text-text-main">{p.name}</span>
-                                <button onClick={() => removeParticipant(i)} className="text-text-muted hover:text-red-400 transition-colors p-1">
-                                    <X size={16} />
-                                </button>
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">
+                                        <FileText size={12} className="text-primary/60" /> Notas / Indicaciones
+                                    </label>
+                                    <textarea
+                                        className="input-field bg-surface-low/50 hover:bg-surface-low focus:bg-surface-lowest shadow-inner h-32 resize-none text-xs leading-relaxed"
+                                        value={notes}
+                                        onChange={e => setNotes(e.target.value)}
+                                        placeholder="Escribe observaciones o detalles logísticos..."
+                                    />
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                    {/* Add participant row */}
-                    <div className="flex gap-2">
-                        <input
-                            value={newName}
-                            onChange={e => setNewName(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && addParticipant()}
-                            placeholder="Nombre del cantante / músico"
-                            className={`${inputCls} flex-1`}
-                        />
-                        <button
-                            onClick={addParticipant}
-                            className="p-3 bg-primary hover:bg-primary/80 text-white rounded-xl transition-colors"
-                        >
-                            <Plus size={20} />
-                        </button>
-                    </div>
-                </div>
+                        </div>
 
-                {/* Notes */}
-                <div>
-                    <label className="text-xs text-text-muted font-semibold uppercase tracking-widest mb-2 block">Notas (opcional)</label>
-                    <textarea
-                        value={notes}
-                        onChange={e => setNotes(e.target.value)}
-                        placeholder="Observaciones, indicaciones especiales..."
-                        rows={3}
-                        className={`${inputCls} resize-none`}
-                    />
-                </div>
+                        {/* Personnel Side */}
+                        <div className="space-y-10">
+                            <div className="flex items-center justify-between border-b border-white/[0.03] pb-3 text-center sm:text-left">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted/40">Personnel / Ministros</h3>
+                                <span className="text-[9px] font-bold text-primary/60 tracking-widest">{participants.length} ASIGNADOS</span>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Personnel List */}
+                                <div className="space-y-3">
+                                    <AnimatePresence mode="popLayout">
+                                        {participants.map((p, i) => (
+                                            <motion.div 
+                                                key={`${p.name}-${i}`}
+                                                layout
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                className="tonal-card p-4 flex items-center justify-between group hover:bg-surface-high transition-all"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-surface-lowest flex items-center justify-center text-primary border border-white/5 shadow-inner">
+                                                        <Users size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm text-text-main group-hover:text-primary transition-colors">{p.name}</p>
+                                                        {p.role && <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/40">{p.role}</p>}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeParticipant(i)} 
+                                                    className="w-8 h-8 flex items-center justify-center text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* Add Personnel Row */}
+                                <div className="bg-surface-low/30 p-6 rounded-[2rem] border border-white/[0.03] shadow-inner space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 text-center">Incorporar Ministro</p>
+                                    <div className="space-y-3">
+                                        <input
+                                            value={newName}
+                                            onChange={e => setNewName(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && addParticipant()}
+                                            placeholder="Nombre del integrante..."
+                                            className="input-field bg-background/50 border-white/5 text-sm"
+                                        />
+                                        <input
+                                            value={newRole}
+                                            onChange={e => setNewRole(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && addParticipant()}
+                                            placeholder="Función (Voz, Piano, Bajo...)"
+                                            className="input-field bg-background/50 border-white/5 text-xs"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addParticipant}
+                                            className="w-full h-11 flex items-center justify-center gap-2 bg-primary/20 text-primary hover:bg-primary hover:text-on-primary rounded-xl transition-all shadow-lg text-[10px] font-black uppercase tracking-[0.2em] active:scale-[0.98]"
+                                        >
+                                            <Plus size={16} /> Agregar Cédula
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     );

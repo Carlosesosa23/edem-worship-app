@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSongs } from '../contexts/SongsContext';
 import { transposeContent, normalizeContent, MAJOR_KEYS, MINOR_KEYS, getSemitonesDifference } from '../lib/transpose';
-import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2, Palette, X, Share2, Copy, Check, Timer } from 'lucide-react';
+import { ArrowLeft, Edit, Music, User, Mic, Youtube, Trash2, Palette, X, Share2, Check, Timer, ChevronDown } from 'lucide-react';
 import { LiveBanner } from '../components/LiveBanner';
 import { DirectorControls } from '../components/DirectorControls';
 import { Metronome } from '../components/Metronome';
@@ -10,6 +10,7 @@ import { SongContent } from '../components/SongContent';
 import { useLiveSession, SINGER_COLORS } from '../contexts/LiveSessionContext';
 import { cn } from '../lib/utils';
 import { useShareSong } from '../hooks/useShareSong';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function getYouTubeID(url: string) {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -26,22 +27,13 @@ export function SongViewer() {
     const song = songs.find(s => s.id === id);
 
     const [selectedKey, setSelectedKey] = useState(song?.key || 'C');
-
-    // Director voice assignment mode
     const [voiceMode, setVoiceMode] = useState(false);
     const [activeSinger, setActiveSinger] = useState<string | null>(null);
-
-    // Metronome panel
     const [metronomeOpen, setMetronomeOpen] = useState(false);
-
-    // Share / copy
     const { share, status: shareStatus } = useShareSong();
 
     const transposedContent = useMemo(() => {
         if (!song) return '';
-        // Normalize first: converts plain chord lines (e.g. "G  Am") to bracket
-        // notation ([G]  [Am]) so SongContent can pair chords with their syllables.
-        // This handles songs saved before normalizeContent was applied on save.
         const normalized = normalizeContent(song.content);
         const semitones = getSemitonesDifference(song.key, selectedKey);
         if (semitones === 0) return normalized;
@@ -49,7 +41,7 @@ export function SongViewer() {
     }, [song, selectedKey]);
 
     if (!song) {
-        return <div className="p-8 text-center text-text-muted">Canción no encontrada</div>;
+        return <div className="p-24 text-center serif-title text-text-muted">Archivo no encontrado</div>;
     }
 
     const isTransposed = selectedKey !== song.key;
@@ -63,237 +55,244 @@ export function SongViewer() {
     };
 
     return (
-        <div className="bg-background min-h-screen pb-24 font-sans text-text-main">
-            {/* Header Sticky */}
-            <div className="sticky top-0 z-20 glass-panel border-b border-white/5 px-4 py-3 flex justify-between items-center shadow-lg backdrop-blur-xl">
-                <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <ArrowLeft size={24} />
-                </button>
+        <div className="bg-background min-h-screen pb-32 animate-fade-in sm:px-4">
+            {/* Header Sticky - Editorial Glassmorphism */}
+            <div className="sticky top-0 z-30 glass-panel border-b border-white/[0.03] px-4 py-3 flex justify-between items-center shadow-2xl backdrop-blur-2xl">
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-all text-text-muted hover:text-primary active:scale-90"
+                    >
+                        <ArrowLeft size={22} />
+                    </button>
+                    <div className="hidden md:block h-6 w-[1px] bg-white/5 mx-2" />
+                    <div className="hidden md:block">
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Interpretación</p>
+                        <h2 className="serif-title font-bold text-sm text-text-main truncate max-w-[200px]">{song.title}</h2>
+                    </div>
+                </div>
+
                 <div className="flex gap-2 items-center">
-                    {/* Transpose Controls */}
-                    <div className="flex items-center bg-surface rounded-lg overflow-hidden border border-white/10">
-                        <select
-                            value={selectedKey}
-                            onChange={(e) => setSelectedKey(e.target.value)}
-                            className="bg-transparent text-secondary font-bold text-lg py-1 px-3 appearance-none cursor-pointer focus:outline-none text-center min-w-[3rem]"
-                        >
-                            <optgroup label="Mayores">
-                                {MAJOR_KEYS.map(k => <option key={k} value={k} className="bg-surface text-text-main">{k}</option>)}
-                            </optgroup>
-                            <optgroup label="Menores">
-                                {MINOR_KEYS.map(k => <option key={k} value={k} className="bg-surface text-text-main">{k}</option>)}
-                            </optgroup>
-                        </select>
-                        <div className="border-l border-white/10 px-2 pointer-events-none">
-                            <span className="text-[10px] text-text-muted">key</span>
+                    {/* Key Selection - Tonal Pill */}
+                    <div className="relative group">
+                        <div className="flex items-center bg-surface-lowest rounded-full px-3 py-1.5 border border-white/5 shadow-inner group-hover:border-primary/20 transition-all">
+                            <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-widest mr-2">Tono:</span>
+                            <select
+                                value={selectedKey}
+                                onChange={(e) => setSelectedKey(e.target.value)}
+                                className="bg-transparent text-primary font-bold serif-title text-base appearance-none cursor-pointer focus:outline-none text-center min-w-[2.5rem] pr-4"
+                            >
+                                <optgroup label="Mayores" className="bg-surface-low text-text-main font-sans">
+                                    {MAJOR_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
+                                </optgroup>
+                                <optgroup label="Menores" className="bg-surface-low text-text-main font-sans">
+                                    {MINOR_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
+                                </optgroup>
+                            </select>
+                            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none group-hover:text-primary transition-colors" />
                         </div>
                     </div>
 
-                    {/* Voice assignment toggle — director only */}
-                    {isDirector && (
+                    <div className="h-6 w-[1px] bg-white/5 mx-1" />
+
+                    <div className="flex items-center gap-1">
+                        {isDirector && (
+                            <button
+                                onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); }}
+                                className={cn(
+                                    'w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                                    voiceMode ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-white/5'
+                                )}
+                                title="Asignar voces"
+                            >
+                                <Palette size={20} />
+                            </button>
+                        )}
+
                         <button
-                            onClick={() => { setVoiceMode(v => !v); setActiveSinger(null); }}
+                            onClick={() => setMetronomeOpen(o => !o)}
                             className={cn(
-                                'p-2 rounded-lg transition-colors',
-                                voiceMode
-                                    ? 'bg-primary text-white'
-                                    : 'text-text-muted hover:text-text-main hover:bg-white/10'
+                                'w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                                metronomeOpen ? 'bg-primary/20 text-primary' : 'text-text-muted hover:bg-white/5'
                             )}
-                            title="Asignar voces por línea"
                         >
-                            <Palette size={20} />
+                            <Timer size={20} />
                         </button>
-                    )}
 
-                    {song.youtubeUrl && (
-                        <a
-                            href={song.youtubeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
-                            title="Ver en YouTube"
-                        >
-                            <Youtube size={24} />
-                        </a>
-                    )}
+                        <div className="hidden sm:flex items-center gap-1">
+                            <button
+                                onClick={() => share(song, selectedKey)}
+                                className={cn(
+                                    'w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                                    shareStatus === 'idle' ? 'text-text-muted hover:bg-white/5' : 'bg-green-500/10 text-green-400'
+                                )}
+                            >
+                                {shareStatus === 'copied' || shareStatus === 'shared' ? <Check size={20} /> : <Share2 size={20} />}
+                            </button>
+                            
+                            <Link to={`/edit/${song.id}`} className="w-10 h-10 flex items-center justify-center rounded-full text-text-muted hover:bg-white/5 transition-all">
+                                <Edit size={20} />
+                            </Link>
 
-                    {/* Metrónomo */}
-                    <button
-                        onClick={() => setMetronomeOpen(o => !o)}
-                        title="Metrónomo"
-                        className={cn(
-                            'p-2 rounded-lg transition-all',
-                            metronomeOpen
-                                ? 'bg-primary/20 text-primary'
-                                : 'text-text-muted hover:text-text-main hover:bg-white/10'
-                        )}
-                    >
-                        <Timer size={20} />
-                    </button>
-
-                    {/* Compartir / Copiar canción */}
-                    <button
-                        onClick={() => share(song, selectedKey)}
-                        title={shareStatus === 'copied' ? '¡Copiado!' : shareStatus === 'shared' ? '¡Compartido!' : 'Compartir canción'}
-                        className={cn(
-                            'p-2 rounded-lg transition-all',
-                            shareStatus === 'idle'
-                                ? 'text-text-muted hover:text-white hover:bg-white/10'
-                                : 'text-green-400 bg-green-500/15'
-                        )}
-                    >
-                        {shareStatus === 'copied' || shareStatus === 'shared' ? (
-                            <Check size={20} />
-                        ) : (
-                            'share' in navigator ? <Share2 size={20} /> : <Copy size={20} />
-                        )}
-                    </button>
-
-                    <Link to={`/edit/${song.id}`} className="p-2 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-main transition-colors">
-                        <Edit size={20} />
-                    </Link>
-                    <button
-                        onClick={async () => {
-                            if (window.confirm('¿Estás seguro que deseas ELIMINAR esta canción permanentemente?')) {
-                                try {
-                                    await deleteSong(song.id);
-                                    navigate('/songs');
-                                } catch {
-                                    alert('Error al eliminar');
-                                }
-                            }
-                        }}
-                        className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-500 rounded-lg transition-colors"
-                        title="Eliminar canción"
-                    >
-                        <Trash2 size={20} />
-                    </button>
+                            <button
+                                onClick={async () => {
+                                    if (window.confirm('¿ELIMINAR esta canción permanentemente?')) {
+                                        await deleteSong(song.id);
+                                        navigate('/songs');
+                                    }
+                                }}
+                                className="w-10 h-10 flex items-center justify-center rounded-full text-red-400/40 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Voice Assignment Toolbar — director only, visible when voiceMode is on */}
-            {isDirector && voiceMode && (
-                <div className="sticky top-[57px] z-10 glass-panel border-b border-white/5 px-4 py-2 flex items-center gap-2 flex-wrap shadow-md backdrop-blur-xl">
-                    <span className="text-xs text-text-muted font-semibold uppercase tracking-widest mr-1">Asignar a:</span>
-                    {SINGER_COLORS.map(s => (
-                        <button
-                            key={s.key}
-                            onClick={() => setActiveSinger(prev => prev === s.key ? null : s.key)}
-                            className={cn(
-                                'px-3 py-1 rounded-full text-xs font-bold text-white transition-all active:scale-95',
-                                s.bg,
-                                activeSinger === s.key
-                                    ? 'ring-2 ring-white scale-105 shadow-lg'
-                                    : 'opacity-70 hover:opacity-100'
-                            )}
-                        >
-                            {s.label}
-                        </button>
-                    ))}
-                    <button
-                        onClick={clearVoiceAssignments}
-                        className="ml-auto flex items-center gap-1 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
-                        title="Limpiar todas las asignaciones"
+            {/* Voice Assignment Toolbar - Director Only */}
+            <AnimatePresence>
+                {isDirector && voiceMode && (
+                    <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="sticky top-[65px] z-20 glass-panel border-b border-white/5 px-4 py-3 shadow-xl backdrop-blur-xl overflow-hidden"
                     >
-                        <X size={14} /> Limpiar
-                    </button>
-                    {activeSinger && (
-                        <p className="w-full text-[10px] text-text-muted mt-1">
-                            Toca una línea para asignarla · Toca de nuevo para quitar
-                        </p>
-                    )}
-                    {!activeSinger && (
-                        <p className="w-full text-[10px] text-text-muted mt-1">
-                            Selecciona un cantante para empezar a asignar líneas
-                        </p>
+                        <div className="max-w-3xl mx-auto flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-text-muted font-black uppercase tracking-[0.2em] mr-2">Voz Activa:</span>
+                            {SINGER_COLORS.map(s => (
+                                <button
+                                    key={s.key}
+                                    onClick={() => setActiveSinger(prev => prev === s.key ? null : s.key)}
+                                    className={cn(
+                                        'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95 shadow-sm',
+                                        s.bg,
+                                        activeSinger === s.key ? 'ring-2 ring-white scale-105 shadow-xl' : 'opacity-40 hover:opacity-100'
+                                    )}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                            <button
+                                onClick={clearVoiceAssignments}
+                                className="ml-auto text-[10px] font-black uppercase tracking-widest text-red-400/60 hover:text-red-400 px-3 py-1.5 rounded-full hover:bg-red-400/10 transition-all"
+                            >
+                                <X size={14} className="inline mr-1" /> Reset
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12">
+                {/* Song Header Section */}
+                <div className="mb-16 text-center space-y-6">
+                    <header className="space-y-4">
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="h-0.5 w-12 bg-primary/20 mb-2" />
+                            <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">Propiedad de Edem Worship</p>
+                        </div>
+                        <h1 className="text-5xl md:text-6xl serif-title font-bold text-text-main leading-tight tracking-tight">
+                            {song.title}
+                        </h1>
+                        <div className="flex items-center justify-center gap-6 text-[10px] font-bold text-text-muted/60 uppercase tracking-[0.2em]">
+                            <span className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/5 bg-surface-lowest">
+                                <User size={14} className="text-primary/60" /> {song.artist}
+                            </span>
+                            {song.bpm && (
+                                <span className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/5 bg-surface-lowest">
+                                    <Music size={14} className="text-primary/60" /> {song.bpm} BPM
+                                </span>
+                            )}
+                        </div>
+                    </header>
+
+                    {song.bestSinger && (
+                        <div className="inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-5 py-2 rounded-2xl border border-primary/10 shadow-inner">
+                            <Mic size={14} /> Voz Predeterminada: {song.bestSinger}
+                        </div>
                     )}
                 </div>
-            )}
 
-            {/* Metronome panel — collapses below header */}
-            {metronomeOpen && (
-                <div className="px-4 pt-3 pb-1 max-w-sm mx-auto">
-                    <Metronome
-                        initialBpm={song.bpm ?? 100}
-                        onClose={() => setMetronomeOpen(false)}
+                {/* Metronome Collapsible */}
+                <AnimatePresence>
+                    {metronomeOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="mb-12 max-w-sm mx-auto"
+                        >
+                            <div className="tonal-card p-6 shadow-2xl relative border border-primary/10">
+                                <Metronome
+                                    initialBpm={song.bpm ?? 100}
+                                    onClose={() => setMetronomeOpen(false)}
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Main Content Area */}
+                <div className="bg-surface-lowest/20 p-6 md:p-12 rounded-[2.5rem] border border-white/[0.02] shadow-inner font-mono relative">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.01] pointer-events-none">
+                        <Music size={240} />
+                    </div>
+                    
+                    <SongContent
+                        content={transposedContent}
+                        voiceAssignments={voiceAssignments}
+                        singerColors={SINGER_COLORS}
+                        onLineClick={handleLineClick}
+                        interactive={isDirector && voiceMode && activeSinger !== null}
+                        size="base"
                     />
                 </div>
-            )}
 
-            <div className="p-4 max-w-3xl mx-auto">
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-extrabold mb-2 bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent">{song.title}</h1>
-                    <div className="flex flex-wrap items-center justify-center gap-4 text-text-muted text-sm">
-                        <span className="flex items-center gap-1"><User size={14} /> {song.artist}</span>
-                        {song.bpm && <span className="flex items-center gap-1"><Music size={14} /> {song.bpm} BPM</span>}
-                    </div>
-                    {song.bestSinger && (
-                        <div className="mt-4 inline-flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                            <Mic size={12} /> Sugerido: {song.bestSinger}
-                        </div>
-                    )}
-
-                    {/* Legend — visible when there are voice assignments */}
-                    {Object.keys(voiceAssignments).length > 0 && (
-                        <div className="mt-4 flex flex-wrap justify-center gap-2">
-                            {SINGER_COLORS.filter(s =>
-                                Object.values(voiceAssignments).includes(s.key)
-                            ).map(s => (
-                                <span key={s.key} className={cn(
-                                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white',
-                                    s.bg
-                                )}>
-                                    {s.label}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <SongContent
-                    content={transposedContent}
-                    voiceAssignments={voiceAssignments}
-                    singerColors={SINGER_COLORS}
-                    onLineClick={handleLineClick}
-                    interactive={isDirector && voiceMode && activeSinger !== null}
-                    size="base"
-                />
-
+                {/* YouTube Reference Section */}
                 {song.youtubeUrl && (
-                    <div className="mt-12 mb-8 border-t border-white/10 pt-8">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Youtube className="text-red-500" />
-                            Referencia
-                        </h3>
-                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/50 shadow-2xl">
+                    <div className="mt-24 mb-12 space-y-8">
+                        <div className="flex items-center gap-4">
+                            <div className="h-[1px] flex-1 bg-white/[0.05]" />
+                            <h3 className="serif-title font-bold text-2xl text-text-main italic flex items-center gap-3">
+                                <Youtube className="text-red-500" size={28} />
+                                Guía Auditiva
+                            </h3>
+                            <div className="h-[1px] flex-1 bg-white/[0.05]" />
+                        </div>
+                        
+                        <div className="aspect-video w-full rounded-[2rem] overflow-hidden bg-black/50 shadow-2xl border border-white/5">
                             <iframe
                                 width="100%"
                                 height="100%"
                                 src={`https://www.youtube.com/embed/${getYouTubeID(song.youtubeUrl)}`}
-                                title="YouTube video player"
+                                title="YouTube reference content"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
+                                className="opacity-80 hover:opacity-100 transition-opacity duration-700"
                             ></iframe>
                         </div>
-                        <p className="text-xs text-text-muted mt-2 text-center">
-                            Video reproducido desde YouTube (No alojado en la app)
+                        <p className="text-[10px] font-bold text-text-muted/30 text-center uppercase tracking-[0.4em]">
+                            Contenido Externo · Solo Referencia de Ensayos
                         </p>
                     </div>
                 )}
             </div>
 
-            {/* Floating Transpose Reset if modified */}
+            {/* Floating Quick Controls */}
             {isTransposed && (
-                <button
+                <motion.button
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
                     onClick={() => setSelectedKey(song.key)}
-                    className="fixed bottom-24 right-6 bg-accent text-white px-4 py-2 rounded-full shadow-lg text-xs font-bold animate-fade-in"
+                    className="fixed bottom-24 right-6 bg-primary text-on-primary px-6 py-3 rounded-full shadow-2xl shadow-primary/20 text-[10px] font-black uppercase tracking-[0.2em] transform hover:scale-105 active:scale-95 transition-all z-40 border border-white/20"
                 >
-                    Restablecer Tono
-                </button>
+                    Original: {song.key}
+                </motion.button>
             )}
 
-            {/* Live Session Overlays */}
             <LiveBanner />
             <DirectorControls />
         </div>

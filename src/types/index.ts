@@ -53,6 +53,7 @@ export interface WorshipEvent {
     title: string;
     date: number;           // Timestamp (ms)
     time?: string;          // "10:00 AM"
+    location?: string;      // Ej. "Templo Principal"
     type: 'servicio' | 'ensayo' | 'otro';
     mixId?: string;         // Optional linked Mix
     participants: Participant[];
