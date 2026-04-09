@@ -1,5 +1,5 @@
 import { cn } from '../lib/utils';
-import type { SingerColor } from '../types';
+import type { SingerColor, ArrangementBlock } from '../types';
 import { parseSongContent, type ParsedSection, type ParsedLine } from '../lib/songParser';
 import { useMemo } from 'react';
 import { Repeat, Hash } from 'lucide-react';
@@ -16,6 +16,8 @@ interface SongContentProps {
     size?: 'sm' | 'base';
     /** Modo cantante: muestra solo letra en texto grande, sin acordes */
     singerMode?: boolean;
+    /** Arreglo personalizado de secciones (si se proporciona, se reordena/filtra) */
+    arrangement?: ArrangementBlock[];
 }
 
 /**
@@ -34,12 +36,23 @@ export function SongContent({
     interactive = false,
     size = 'base',
     singerMode = false,
+    arrangement,
 }: SongContentProps) {
-    const sections = useMemo(() => parseSongContent(content), [content]);
+    const parsedSections = useMemo(() => parseSongContent(content), [content]);
+
+    // Apply custom arrangement: reorder/duplicate/filter sections
+    const sections = useMemo(() => {
+        if (!arrangement || arrangement.length === 0) return parsedSections;
+        return arrangement
+            .map(block => parsedSections[block.originalIndex])
+            .filter(Boolean) as ParsedSection[];
+    }, [parsedSections, arrangement]);
 
     // Tamaños según modo
+    // singerMode: hereda fontSize del contenedor padre (controlado por zoom en FullscreenLyrics)
+    // usando text-[1em] para que Tailwind no sobreescriba con un valor rem fijo
     const textSize = singerMode
-        ? 'text-2xl md:text-3xl'
+        ? 'text-[1em]'
         : size === 'sm' ? 'text-base' : 'text-lg';
     const chordSize = size === 'sm' ? 'text-xs' : 'text-sm';
     const lineSpacing = singerMode ? 'mb-5' : 'mb-3';
@@ -216,7 +229,7 @@ export function SongContent({
                         <Hash size={singerMode ? 18 : 14} className="text-primary/50" />
                         <span className={cn(
                             'font-black uppercase tracking-[0.2em] text-primary',
-                            singerMode ? 'text-base md:text-lg' : 'text-[10px]'
+                            singerMode ? 'text-[0.55em]' : 'text-[10px]'
                         )}>
                             {section.name}
                         </span>

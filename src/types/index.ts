@@ -26,12 +26,36 @@ export interface SingerColor {
     light: string;     // bg suave para highlight de línea, ej. "bg-red-600/20"
 }
 
+/** Anotación por canción dentro de un mix: repeticiones, volver a sección, notas */
+export interface SongAnnotation {
+    /** Cuántas veces se repite la canción completa (1 = normal, 2 = doble, etc.) */
+    repeatCount?: number;
+    /** Sección a la que volver después (ej. "Coro", "Verso 1") */
+    goToSection?: string;
+    /** Nota libre del director (ej. "Subir intensidad", "Solo guitarra") */
+    note?: string;
+}
+
+/** Bloque de sección con ID estable para arrastrar/reordenar */
+export interface ArrangementBlock {
+    /** ID único del bloque (uuid corto o "sectionIdx-sectionName") */
+    id: string;
+    /** Nombre de la sección original (ej. "Verso", "Coro", "") */
+    sectionName: string;
+    /** Índice original de la sección en el contenido de la canción */
+    originalIndex: number;
+}
+
 export interface Mix {
     id: string;
     title: string;
     date: number; // Timestamp
     description?: string;
     songs: string[]; // Array of Song IDs
+    /** Anotaciones por canción — key es el índice del song en el array (como string) */
+    annotations?: Record<string, SongAnnotation>;
+    /** Arreglo de secciones por canción — key es songId, value es el orden de bloques */
+    arrangements?: Record<string, ArrangementBlock[]>;
     createdBy?: string;
 }
 
